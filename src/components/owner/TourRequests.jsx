@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { FiCalendar, FiClock, FiMapPin, FiCheck, FiX, FiChevronDown, FiHome, FiUser, FiEye } from 'react-icons/fi'
+import { useNavigate } from 'react-router-dom'
 import bookingAPI from '../../services/bookingAPI'
 import { toast } from 'react-hot-toast'
 
@@ -19,6 +20,7 @@ const SaudiRiyalIcon = ({ className = '' }) => (
 )
 
 export default function TourRequests({ language }) {
+  const navigate = useNavigate()
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -82,7 +84,7 @@ export default function TourRequests({ language }) {
       },
       propertyInfo: 'Property Information',
       renterInfo: 'Renter Information',
-      confirmStatusChange: 'Are you sure you want to change the status to {status}?',
+      confirmStatusChange: 'Are you sure you want to change the status to',
       errorLoading: 'Error loading requests',
       tryAgain: 'Try Again',
       price: 'Price',
@@ -107,7 +109,7 @@ export default function TourRequests({ language }) {
       },
       propertyInfo: 'معلومات العقار',
       renterInfo: 'معلومات المستأجر',
-      confirmStatusChange: 'هل أنت متأكد أنك تريد تغيير الحالة إلى {status}؟',
+      confirmStatusChange: 'هل أنت متأكد أنك تريد تغيير الحالة إلى',
       errorLoading: 'خطأ في تحميل الطلبات',
       tryAgain: 'حاول مرة أخرى',
       price: 'السعر',
@@ -151,8 +153,12 @@ export default function TourRequests({ language }) {
   }
 
   const handleStatusChange = async (requestId, newStatus) => {
-    const statusText = t.status[newStatus.toLowerCase()]
-    if (window.confirm(t.confirmStatusChange.replace('{status}', statusText))) {
+    const statusText = t.status[newStatus.toLowerCase()];
+    const confirmMessage = language === 'ar'
+      ? t.confirmStatusChange.replace('{status}', statusText)
+      : `${t.confirmStatusChange} ${statusText}?`;
+
+    if (window.confirm(confirmMessage)) {
       try {
         const response = await bookingAPI.changeBookingStatus(requestId, newStatus)
         if (response.success) {
@@ -261,13 +267,18 @@ export default function TourRequests({ language }) {
                           </button>
 
                           {openStatusMenu === request.booking_id && (
-                            <div className="absolute right-0 mt-2 py-2 w-48 bg-white rounded-md shadow-lg z-10 border">
+                            <div className="absolute right-0 mt-2 py-1 w-40 bg-white rounded-md shadow-lg z-50 border transform -translate-y-1">
                               {getAvailableStatuses(request.status).map(status => (
                                 <button
                                   key={status}
                                   onClick={() => handleStatusChange(request.booking_id, status)}
-                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  className="w-full text-start px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                                 >
+                                  {status === 'confirmed' || status === 'accepted' ? (
+                                    <FiCheck className="w-3.5 h-3.5 text-green-600" />
+                                  ) : status === 'rejected' || status === 'cancelled' ? (
+                                    <FiX className="w-3.5 h-3.5 text-red-600" />
+                                  ) : null}
                                   {t.status[status]}
                                 </button>
                               ))}
@@ -327,11 +338,20 @@ export default function TourRequests({ language }) {
 
                     <div className="flex justify-end pt-2 border-t border-gray-100">
                       <button
-                        onClick={() => window.location.href = `/properties/${request.unit_id}`}
-                        className="px-4 py-2 bg-[#BE092B]/90 text-white rounded-lg hover:bg-[#8a1328] transition-colors flex items-center gap-2"
+                        onClick={() => {
+                          const details = detailedRequests[request.booking_id];
+                          console.log('Details:', details);
+                          console.log('Property ID:', details?.unit?.id);
+                          if (details?.unit?.id) {
+                            navigate(`/properties/${details.unit.id}`);
+                          } else {
+                            toast.error('Property details not found');
+                          }
+                        }}
+                        className="p-2 text-gray-600 hover:text-gray-900"
+                        title={t.viewProperty}
                       >
-                        <FiEye className="w-4 h-4" />
-                        {t.viewProperty}
+                        <FiEye />
                       </button>
                     </div>
                   </div>
