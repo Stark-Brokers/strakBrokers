@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <div align="center">
 
 # ✨ Stark Brokers Real Estate ✨
@@ -44,3 +45,6 @@ npm run dev
 Made with ❤️ by **Stark Brokers Team**
 
 </div>
+=======
+"# strakBrokers" 
+>>>>>>> 2208dba0ff415876d39adbda02d654b35521d041
