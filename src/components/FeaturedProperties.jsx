@@ -121,6 +121,27 @@ export default function FeaturedProperties({ language }) {
       e.stopPropagation();
       if (favoriteLoading) return;
 
+      // Check if user is logged in by looking for token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error(
+          language === 'ar'
+            ? 'يجب تسجيل الدخول لإضافة العقار إلى المفضلة'
+            : 'Please login to add properties to favorites'
+        );
+        setTimeout(() => {
+          const shouldLogin = window.confirm(
+            language === 'ar'
+              ? 'هل تريد تسجيل الدخول أو إنشاء حساب جديد؟'
+              : 'Would you like to login or create an account?'
+          );
+          if (shouldLogin) {
+            navigate('/login/renter');
+          }
+        }, 1000);
+        return;
+      }
+
       try {
         setFavoriteLoading(true);
         if (isFavorite) {
@@ -138,11 +159,22 @@ export default function FeaturedProperties({ language }) {
         }
       } catch (error) {
         console.error('Failed to update favorite status:', error);
-        toast.error(
-          language === 'ar'
-            ? 'حدث خطأ أثناء تحديث المفضلة'
-            : 'Failed to update favorites'
-        );
+        if (error.response?.status === 401) {
+          // Clear token and redirect to login
+          localStorage.removeItem('token');
+          toast.error(
+            language === 'ar'
+              ? 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى'
+              : 'Session expired. Please login again'
+          );
+          setTimeout(() => navigate('/login/renter'), 1500);
+        } else {
+          toast.error(
+            language === 'ar'
+              ? 'حدث خطأ أثناء تحديث المفضلة'
+              : 'Failed to update favorites'
+          );
+        }
       } finally {
         setFavoriteLoading(false);
       }

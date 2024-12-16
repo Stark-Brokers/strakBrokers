@@ -211,29 +211,61 @@ export default function PropertyDetails({ language }) {
   }, [id])
 
   const handleFavorite = async () => {
+    // Check if user is logged in by looking for token
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error(
+        language === 'ar'
+          ? 'يجب تسجيل الدخول لإضافة العقار إلى المفضلة'
+          : 'Please login to add properties to favorites'
+      );
+      setTimeout(() => {
+        const shouldLogin = window.confirm(
+          language === 'ar'
+            ? 'هل تريد تسجيل الدخول أو إنشاء حساب جديد؟'
+            : 'Would you like to login or create an account?'
+        );
+        if (shouldLogin) {
+          navigate('/login/renter');
+        }
+      }, 1000);
+      return;
+    }
+
     try {
       if (isFavorite) {
-        const response = await favoritesAPI.removeFromFavorites(property.id)
+        const response = await favoritesAPI.removeFromFavorites(property.id);
         if (response.success) {
-          setIsFavorite(false)
-          toast.success(language === 'ar' ? 'تم إزالة العقار من المفضلة' : 'Property removed from favorites')
+          setIsFavorite(false);
+          toast.success(language === 'ar' ? 'تم إزالة العقار من المفضلة' : 'Property removed from favorites');
         }
       } else {
-        const response = await favoritesAPI.addToFavorites(property.id)
+        const response = await favoritesAPI.addToFavorites(property.id);
         if (response.success) {
-          setIsFavorite(true)
-          toast.success(language === 'ar' ? 'تم إضافة العقار إلى المفضلة' : 'Property added to favorites')
+          setIsFavorite(true);
+          toast.success(language === 'ar' ? 'تم إضافة العقار إلى المفضلة' : 'Property added to favorites');
         }
       }
     } catch (error) {
-      console.error('Failed to update favorite status:', error)
-      toast.error(
-        language === 'ar'
-          ? 'حدث خطأ أثناء تحديث المفضلة'
-          : 'Failed to update favorites'
-      )
+      console.error('Failed to update favorite status:', error);
+      if (error.response?.status === 401) {
+        // Clear token and redirect to login
+        localStorage.removeItem('token');
+        toast.error(
+          language === 'ar'
+            ? 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى'
+            : 'Session expired. Please login again'
+        );
+        setTimeout(() => navigate('/login/renter'), 1500);
+      } else {
+        toast.error(
+          language === 'ar'
+            ? 'حدث خطأ أثناء تحديث المفضلة'
+            : 'Failed to update favorites'
+        );
+      }
     }
-  }
+  };
 
   if (loading) {
     return (

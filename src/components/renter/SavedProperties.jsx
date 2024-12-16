@@ -102,7 +102,18 @@ const PropertyCard = React.memo(({ property, onRemoveFromFavorites, language }) 
       toast.success(t.removedFromFavorites)
     } catch (error) {
       console.error('Failed to remove from favorites:', error)
-      toast.error(t.failedToUpdate)
+      if (error.response?.status === 401) {
+        // Clear token and redirect to login
+        localStorage.removeItem('token')
+        toast.error(
+          language === 'ar'
+            ? 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى'
+            : 'Session expired. Please login again'
+        )
+        setTimeout(() => navigate('/login/renter'), 1500)
+      } else {
+        toast.error(t.failedToUpdate)
+      }
     } finally {
       setFavoriteLoading(false)
     }

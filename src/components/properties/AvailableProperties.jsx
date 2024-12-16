@@ -146,7 +146,6 @@ const PropertyCard = memo(({ property, language, onNavigate }) => {
                     ? 'يجب تسجيل الدخول لإضافة العقار إلى المفضلة'
                     : 'Please login to add properties to favorites'
             );
-            // Show login/register options after a short delay
             setTimeout(() => {
                 const shouldLogin = window.confirm(
                     language === 'ar'
@@ -177,11 +176,22 @@ const PropertyCard = memo(({ property, language, onNavigate }) => {
             }
         } catch (error) {
             console.error('Failed to update favorite status:', error);
-            toast.error(
-                language === 'ar'
-                    ? 'حدث خطأ أثناء تحديث المفضلة'
-                    : 'Failed to update favorites'
-            );
+            if (error.response?.status === 401) {
+                // Clear token and redirect to login
+                localStorage.removeItem('token');
+                toast.error(
+                    language === 'ar'
+                        ? 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى'
+                        : 'Session expired. Please login again'
+                );
+                setTimeout(() => navigate('/login/renter'), 1500);
+            } else {
+                toast.error(
+                    language === 'ar'
+                        ? 'حدث خطأ أثناء تحديث المفضلة'
+                        : 'Failed to update favorites'
+                );
+            }
         } finally {
             setFavoriteLoading(false);
         }

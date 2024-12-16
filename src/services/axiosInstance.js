@@ -46,6 +46,18 @@ axiosInstance.interceptors.response.use(
       status: error.response?.status,
       message: error.response?.data?.message,
     })
+
+    // Handle 401 Unauthorized errors globally
+    if (error.response?.status === 401) {
+      // Clear auth data
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      
+      // Add error metadata
+      error.isAuthError = true
+      error.authErrorMessage = error.response?.data?.message || 'Session expired. Please login again.'
+    }
+
     return Promise.reject(error)
   }
 )
