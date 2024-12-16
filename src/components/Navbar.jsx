@@ -1,20 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HiHome, HiUserGroup, HiUserCircle } from 'react-icons/hi';
 import { BiCategory } from 'react-icons/bi';
 import { FaMapMarkedAlt } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import logo from '../assets/logo-nav.jpg';
+import settingsAPI from '../services/settingsAPI';
 
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [showLoginOptions, setShowLoginOptions] = useState(false);
+  const [logo, setLogo] = useState('');
   const { user, logout } = useAuth();
   const { language, setLanguage } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await settingsAPI.getSettings();
+        const logoUrl = settingsAPI.getSettingValue(response, 'site_logo');
+        if (logoUrl) {
+          setLogo(logoUrl);
+        }
+      } catch (error) {
+        console.error('Failed to fetch settings:', error);
+      }
+    };
+
+    fetchSettings();
+  }, []);
 
   const handleLogout = async () => {
     try {

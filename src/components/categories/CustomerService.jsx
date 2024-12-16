@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FiMessageCircle, FiPhone, FiMail, FiClock, FiLoader } from 'react-icons/fi'
 import { toast } from 'react-hot-toast'
 import contactUsAPI from '../../services/contactUsAPI'
+import settingsAPI from '../../services/settingsAPI'
 
 export default function CustomerService({ language }) {
     const [activeTab, setActiveTab] = useState('contact')
@@ -12,6 +13,20 @@ export default function CustomerService({ language }) {
     })
     const [loading, setLoading] = useState(false)
     const [errors, setErrors] = useState({})
+    const [settings, setSettings] = useState(null)
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const response = await settingsAPI.getSettings();
+                setSettings(response);
+            } catch (error) {
+                console.error('Failed to fetch settings:', error);
+            }
+        };
+
+        fetchSettings();
+    }, []);
 
     const content = {
         en: {
@@ -20,8 +35,8 @@ export default function CustomerService({ language }) {
             contact: 'Contact Us',
             faq: 'FAQ',
             support: 'Support Hours',
-            phone: '+966 545 130 380',
-            email: 'starkbrokers.info',
+            email: settingsAPI.getSettingValue(settings, 'support_email') || 'Loading...',
+            phone: settingsAPI.getSettingValue(settings, 'support_phone') || 'Loading...',
             hours: '24/7 Support',
             form: {
                 name: 'Full Name',
@@ -54,8 +69,8 @@ export default function CustomerService({ language }) {
             contact: 'اتصل بنا',
             faq: 'الأسئلة الشائعة',
             support: 'ساعات الدعم',
-            phone: '٥٤٥ ١٣٠ ٣٨٠ ٩٦٦+',
-            email: 'starkbrokers.info',
+            email: settingsAPI.getSettingValue(settings, 'support_email') || 'جاري التحميل...',
+            phone: settingsAPI.getSettingValue(settings, 'support_phone') || 'جاري التحميل...',
             hours: 'دعم على مدار الساعة',
             form: {
                 name: 'الاسم الكامل',

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiCalendar, FiClock, FiMapPin, FiCheck, FiX, FiTrash2, FiEye } from 'react-icons/fi'
 import bookingAPI from '../../services/bookingAPI'
+import { toast } from 'react-hot-toast'
 
 export default function Tours({ language }) {
   const navigate = useNavigate()
@@ -69,8 +70,13 @@ export default function Tours({ language }) {
     }
   };
 
-  const handleViewProperty = (unitId) => {
-    navigate(`/properties/${unitId}`)
+  const handleViewProperty = (bookingId) => {
+    const details = detailedRequests[bookingId];
+    if (!details?.unit?.id) {
+      toast.error(language === 'ar' ? 'لا يمكن العثور على تفاصيل العقار' : 'Property details not found');
+      return;
+    }
+    navigate(`/properties/${details.unit.id}`);
   }
 
   const content = {
@@ -228,7 +234,7 @@ export default function Tours({ language }) {
                           </button>
                         )}
                         <button
-                          onClick={() => handleViewProperty(request.unit_id)}
+                          onClick={() => handleViewProperty(request.booking_id)}
                           className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
                         >
                           <FiEye className="w-4 h-4" />

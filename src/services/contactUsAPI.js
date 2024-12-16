@@ -1,15 +1,4 @@
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://starkbrokers.com'
-
-// Create axios instance with base configuration
-const api = axios.create({
-    baseURL: API_URL,
-    headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-    }
-})
+import axiosInstance from './axiosInstance'
 
 class ContactUsAPI {
     /**
@@ -23,7 +12,7 @@ class ContactUsAPI {
      */
     async sendMessage(data, language = 'en') {
         try {
-            const response = await api.post('/api/v1/contact-us/send', data, {
+            const response = await axiosInstance.post('/contact-us/send', data, {
                 headers: {
                     'Accept-Language': language
                 }
