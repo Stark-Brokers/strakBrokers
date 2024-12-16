@@ -1,84 +1,115 @@
-import { useState } from 'react'
-import { FiSearch, FiFilter } from 'react-icons/fi'
-import PropertyFilters from '../properties/PropertyFilters'
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { GoogleMap, useJsApiLoader } from '@react-google-maps/api';
+
+const containerStyle = {
+    width: '100%',
+    height: '80vh'
+};
+
+// Riyadh center coordinates
+const center = {
+    lat: 24.7136,
+    lng: 46.6753
+};
+
+const mapOptions = {
+    disableDefaultUI: false,
+    zoomControl: true,
+    streetViewControl: true,
+    mapTypeControl: true,
+    fullscreenControl: false,
+    styles: [
+        {
+            featureType: "poi",
+            elementType: "labels",
+            stylers: [{ visibility: "off" }],
+        },
+    ],
+}
+
+// Declare libraries outside component to prevent unnecessary re-renders
+const libraries = ['places'];
+
+// Create a memoized loader configuration
+const createLoaderOptions = (googleMapsApiKey) => ({
+    id: 'google-map-script',
+    googleMapsApiKey,
+    libraries,
+    // Remove language option from here as it causes reloading issues
+});
 
 export default function MapView({ language }) {
-    const [showFilters, setShowFilters] = useState(false)
-    const [activeFilters, setActiveFilters] = useState({
-        type: 'all',
-        priceRange: 'all',
-        bedrooms: 'all',
-        amenities: [],
-        location: 'all'
-    })
+    const loaderOptions = useMemo(
+        () => createLoaderOptions(import.meta.env.VITE_GOOGLE_MAPS_API_KEY),
+        []
+    );
 
-    const content = {
-        en: {
-            title: 'Find Properties on Map',
-            search: 'Search location...',
-            showFilters: 'Show Filters',
-            hideFilters: 'Hide Filters',
-            loading: 'Loading map...'
-        },
-        ar: {
-            title: 'ابحث عن العقارات على الخريطة',
-            search: 'ابحث عن موقع...',
-            showFilters: 'إظهار الفلاتر',
-            hideFilters: 'إخفاء الفلاتر',
-            loading: 'جاري تحميل الخريطة...'
+    const { isLoaded, loadError } = useJsApiLoader(loaderOptions);
+    const [map, setMap] = useState(null);
+
+    // Update map language when language prop changes
+    useEffect(() => {
+        if (map) {
+            map.setOptions({ language: language === 'ar' ? 'ar' : 'en' });
         }
+    }, [language, map]);
+
+    // Cleanup function to handle unmounting
+    useEffect(() => {
+        return () => {
+            if (map) {
+                setMap(null);
+            }
+        };
+    }, [map]);
+
+    const onLoad = useCallback((map) => {
+        const bounds = new window.google.maps.LatLngBounds(center);
+        map.fitBounds(bounds);
+        map.setOptions({ language: language === 'ar' ? 'ar' : 'en' });
+        setMap(map);
+    }, [language]);
+
+    const onUnmount = useCallback(() => {
+        setMap(null);
+    }, []);
+
+    // Handle loading error
+    if (loadError) {
+        return (
+            <div className="h-[calc(100vh-80px)] flex items-center justify-center">
+                <div className="text-red-500">
+                    {language === 'ar'
+                        ? 'عذراً، حدث خطأ في تحميل الخريطة'
+                        : 'Sorry, there was an error loading the map'}
+                </div>
+            </div>
+        );
     }
 
-    const t = content[language]
-
-    const handleFilterChange = (newFilters) => {
-        setActiveFilters(prev => ({
-            ...prev,
-            ...newFilters
-        }))
+    // Handle loading state
+    if (!isLoaded) {
+        return (
+            <div className="h-[calc(100vh-80px)] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        );
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-                <h1 className={`text-3xl font-bold ${
-                    language === 'ar' ? 'font-arabic' : ''
-                }`}>
-                    {t.title}
-                </h1>
-                
-                <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="mt-4 md:mt-0 flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
-                >
-                    <FiFilter />
-                    {showFilters ? t.hideFilters : t.showFilters}
-                </button>
-            </div>
-
-            <div className="mb-6">
-                <div className="relative">
-                    <input
-                        type="text"
-                        placeholder={t.search}
-                        className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                    />
-                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                </div>
-            </div>
-
-            <div className={`${showFilters ? 'block' : 'hidden'} mb-8`}>
-                <PropertyFilters 
-                    language={language}
-                    activeFilters={activeFilters}
-                    onFilterChange={handleFilterChange}
-                />
-            </div>
-
-            {/* Map placeholder - integrate with your map service */}
-            <div className="bg-gray-100 rounded-lg h-[600px] flex items-center justify-center">
-                <p className="text-gray-600">{t.loading}</p>
-            </div>
+        <div className="h-[calc(100vh-80px)]">
+            <GoogleMap
+                mapContainerStyle={containerStyle}
+                center={center}
+                zoom={12}
+                onLoad={onLoad}
+                onUnmount={onUnmount}
+                options={{
+                    ...mapOptions,
+                    language: language === 'ar' ? 'ar' : 'en'
+                }}
+            >
+            </GoogleMap>
         </div>
-    )
+    );
 } 

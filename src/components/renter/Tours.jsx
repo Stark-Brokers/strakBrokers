@@ -185,13 +185,15 @@ export default function Tours({ language }) {
                 className="border border-gray-200 rounded-lg overflow-hidden hover:border-primary transition-colors"
               >
                 <div className="flex flex-col md:flex-row">
-                  {/* Property Image */}
-                  <div className="w-full md:w-40 h-40 md:h-auto">
-                    <img
-                      src={details?.unit?.images?.[0]?.url || 'https://placehold.co/600x400/png/white?text=Property+Image'}
-                      alt={details?.unit?.title}
-                      className="w-full h-full object-cover"
-                    />
+                  {/* Property Image Container */}
+                  <div className="relative w-full md:w-40 flex-shrink-0 bg-gray-100">
+                    <div className="w-full aspect-square">
+                      <img
+                        src={details?.unit?.images?.[0]?.url || 'https://placehold.co/600x400/png/white?text=Property+Image'}
+                        alt={details?.unit?.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   </div>
 
                   {/* Booking Details */}
