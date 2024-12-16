@@ -20,8 +20,8 @@ export default function CustomerService({ language }) {
             contact: 'Contact Us',
             faq: 'FAQ',
             support: 'Support Hours',
-            phone: '+966 XX XXX XXXX',
-            email: 'support@example.com',
+            phone: '+966 545 130 380',
+            email: 'starkbrokers.info',
             hours: '24/7 Support',
             form: {
                 name: 'Full Name',
@@ -54,8 +54,8 @@ export default function CustomerService({ language }) {
             contact: 'اتصل بنا',
             faq: 'الأسئلة الشائعة',
             support: 'ساعات الدعم',
-            phone: '+966 XX XXX XXXX',
-            email: 'support@example.com',
+            phone: '٥٤٥ ١٣٠ ٣٨٠ ٩٦٦+',
+            email: 'starkbrokers.info',
             hours: 'دعم على مدار الساعة',
             form: {
                 name: 'الاسم الكامل',
