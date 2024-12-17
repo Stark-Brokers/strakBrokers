@@ -310,9 +310,9 @@ const PropertyCard = memo(({ property, language, onNavigate }) => {
                         <h3 className="text-xl font-semibold line-clamp-2 text-gray-800">
                             {property.title}
                         </h3>
-                        <span className="text-sm text-gray-500">
-                            • {getPropertyTypeLabel(property.type)}
-                        </span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-500">
+                        {getPropertyTypeLabel(property.type)}
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                         {property.address && (
