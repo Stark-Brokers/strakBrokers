@@ -12,6 +12,7 @@ function Navbar() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [showLoginOptions, setShowLoginOptions] = useState(false);
   const [logo, setLogo] = useState('');
+  const [logoLoading, setLogoLoading] = useState(true);
   const { user, logout } = useAuth();
   const { language, setLanguage } = useLanguage();
   const location = useLocation();
@@ -20,6 +21,7 @@ function Navbar() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
+        setLogoLoading(true);
         const response = await settingsAPI.getSettings();
         const logoUrl = settingsAPI.getSettingValue(response, 'site_logo');
         if (logoUrl) {
@@ -27,6 +29,8 @@ function Navbar() {
         }
       } catch (error) {
         console.error('Failed to fetch settings:', error);
+      } finally {
+        setLogoLoading(false);
       }
     };
 
@@ -210,7 +214,11 @@ function Navbar() {
               </div>
             )}
             <Link to="/">
-              <img src={logo} alt="Logo" className="h-14 md:h-16 w-auto" />
+              {logoLoading ? (
+                <div className="h-14 md:h-16 w-32 bg-gray-100 animate-pulse rounded"></div>
+              ) : (
+                <img src={logo} alt="Logo" className="h-14 md:h-16 w-auto" />
+              )}
             </Link>
           </div>
 

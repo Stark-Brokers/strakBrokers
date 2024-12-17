@@ -13,10 +13,12 @@ export default function Footer({ language }) {
   const currentYear = new Date().getFullYear();
   const [settings, setSettings] = useState(null);
   const [logo, setLogo] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
+        setLoading(true);
         const response = await settingsAPI.getSettings();
         setSettings(response);
         const logoUrl = settingsAPI.getSettingValue(response, 'site_logo');
@@ -25,6 +27,8 @@ export default function Footer({ language }) {
         }
       } catch (error) {
         console.error('Failed to fetch settings:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -75,11 +79,15 @@ export default function Footer({ language }) {
         <div className="flex flex-col md:flex-row items-center md:items-end justify-between">
           {/* Logo - Left */}
           <div className="mb-6 md:mb-0">
-            <img
-              src={logo}
-              alt="Footer Logo"
-              className="h-32 md:h-40 w-auto"
-            />
+            {loading ? (
+              <div className="h-32 md:h-40 w-40 bg-gray-100 animate-pulse rounded"></div>
+            ) : (
+              <img
+                src={logo}
+                alt="Footer Logo"
+                className="h-32 md:h-40 w-auto"
+              />
+            )}
           </div>
 
           {/* Copyright - Center */}
@@ -93,24 +101,32 @@ export default function Footer({ language }) {
 
           {/* Social Media Icons - Right */}
           <div className="flex items-center gap-4">
-            {settings?.data?.social_media?.map((social) => {
-              const icon = getSocialIcon(social.key);
-              if (!icon) return null;
+            {loading ? (
+              <div className="flex gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="w-10 h-10 bg-gray-100 animate-pulse rounded-full"></div>
+                ))}
+              </div>
+            ) : (
+              settings?.data?.social_media?.map((social) => {
+                const icon = getSocialIcon(social.key);
+                if (!icon) return null;
 
-              return (
-                <a
-                  key={social.id}
-                  href={social.value}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 text-gray-600 hover:bg-[#BE092B] hover:text-white transition-all duration-300"
-                  aria-label={getSocialLabel(social.key)}
-                  title={getSocialLabel(social.key)}
-                >
-                  {icon}
-                </a>
-              );
-            })}
+                return (
+                  <a
+                    key={social.id}
+                    href={social.value}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 text-gray-600 hover:bg-[#BE092B] hover:text-white transition-all duration-300"
+                    aria-label={getSocialLabel(social.key)}
+                    title={getSocialLabel(social.key)}
+                  >
+                    {icon}
+                  </a>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

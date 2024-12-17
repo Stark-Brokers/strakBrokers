@@ -3,8 +3,10 @@ import { useNavigate, Link } from 'react-router-dom'
 import { authAPI } from '../../services/api'
 import { formatPhoneNumber, validateSaudiPhone } from '../../utils/phoneUtils'
 import { toast } from 'react-hot-toast'
+import { useAuth } from '../../contexts/AuthContext'
 
 export default function Register({ language, userType }) {
+  const { user, logout } = useAuth()
   const [step, setStep] = useState('register') // 'register' or 'otp'
   const [formData, setFormData] = useState({
     full_name: '',
@@ -57,7 +59,11 @@ export default function Register({ language, userType }) {
         address: 'Enter your address',
         businessName: 'Enter your business name',
         businessLicense: 'Enter your business license number'
-      }
+      },
+      alreadyLoggedIn: 'You are already logged in',
+      logoutMessage: 'To register a new account, please logout first',
+      logoutButton: 'Logout',
+      goBack: 'Go Back'
     },
     ar: {
       title: userType === 'renter' ? 'تسجيل مستأجر' : 'تسجيل مالك',
@@ -69,7 +75,7 @@ export default function Register({ language, userType }) {
       businessLicense: 'رقم الرخصة التجارية',
       submit: 'إرسال رمز التحقق',
       otpTitle: 'التحقق من الرمز',
-      otpMessage: 'الر��اء إدخال رمز التحقق المرسل إلى هاتفك',
+      otpMessage: 'الراء إدخال رمز التحقق المرسل إلى هاتفك',
       otpPlaceholder: 'أدخل رمز التحقق',
       verifyButton: 'تحقق وتسجيل',
       successMessage: 'تم التسجيل بنجاح! جاري التحويل...',
@@ -85,7 +91,8 @@ export default function Register({ language, userType }) {
         addressRequired: 'العنوان مطلوب',
         businessNameRequired: 'اسم الشركة مطلوب للملاك',
         businessLicenseRequired: 'رقم الرخصة التجارية مطلوب للملاك',
-        phoneExists: 'رقم الهاتف مسجل بالفعل'
+        phoneExists: 'رقم الهاتف مسجل بالفعل',
+        phoneTaken: 'رقم الهاتف مستخدم بالفعل'
       },
       placeholders: {
         name: 'أدخل اسمك الكامل',
@@ -94,7 +101,11 @@ export default function Register({ language, userType }) {
         address: 'أدخل عنوانك',
         businessName: 'أدخل اسم الشركة',
         businessLicense: 'أدخل رقم الرخصة التجارية'
-      }
+      },
+      alreadyLoggedIn: 'أنت مسجل الدخول بالفعل',
+      logoutMessage: 'لتسجيل حساب جديد، يرجى تسجيل الخروج أولاً',
+      logoutButton: 'تسجيل الخروج',
+      goBack: 'رجوع'
     }
   }
 
@@ -241,6 +252,50 @@ export default function Register({ language, userType }) {
       setIsLoading(false);
     }
   };
+
+  const handleLogoutAndRedirect = async () => {
+    try {
+      await logout()
+      toast.success(language === 'ar' ? 'تم تسجيل الخروج بنجاح' : 'Logged out successfully')
+      // Reload the page to clear any cached states
+      window.location.reload()
+    } catch (error) {
+      console.error('Logout failed:', error)
+      toast.error(language === 'ar' ? 'فشل تسجيل الخروج' : 'Logout failed')
+    }
+  }
+
+  // If user is logged in, show logout message
+  if (user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 text-center">
+            <h2 className={`text-xl font-bold text-gray-900 mb-4 ${language === 'ar' ? 'font-arabic' : ''}`}>
+              {t.alreadyLoggedIn}
+            </h2>
+            <p className={`text-gray-600 mb-6 ${language === 'ar' ? 'font-arabic' : ''}`}>
+              {t.logoutMessage}
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleLogoutAndRedirect}
+                className="w-full bg-primary text-white px-6 py-3 rounded-lg font-bold hover:bg-primary-hover transition-colors duration-200"
+              >
+                {t.logoutButton}
+              </button>
+              <Link
+                to="/"
+                className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+              >
+                {t.goBack}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
