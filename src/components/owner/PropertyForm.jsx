@@ -137,7 +137,7 @@ export default function PropertyForm({ language }) {
         title: 'عنوان العقار',
         description: 'الوصف',
         type: 'النوع',
-        price: 'السعر (ريال)',
+        price: 'السعر (ريال سنوياً)',
         bedrooms: 'غرف النوم',
         bathrooms: 'دورات المياه',
         area: 'المساحة (م²)',
@@ -542,7 +542,7 @@ export default function PropertyForm({ language }) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.fields.price}
+                {t.fields.price} {language === 'ar' ? 'سنوياً' : 'yearly'}
               </label>
               <input
                 type="number"
@@ -686,10 +686,10 @@ export default function PropertyForm({ language }) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t.fields.building_number}
+                <span className="text-gray-400 ml-1">(Optional)</span>
               </label>
               <input
                 type="text"
-                required
                 value={formData.building_number}
                 onChange={(e) => setFormData({ ...formData, building_number: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"

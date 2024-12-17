@@ -415,7 +415,7 @@ export default function PropertyDetails({ language }) {
             <div className="flex justify-between items-start mb-6">
               <div>
                 <span className="text-2xl font-bold text-gray-900">
-                  {property.price} {t.currency}
+                  {property.price} {t.currency} {language === 'ar' ? 'سنوياً' : 'yearly'}
                 </span>
               </div>
               <button
