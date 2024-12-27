@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function Register({ language, userType }) {
-  const { user, logout } = useAuth()
+  const { user, logout, login } = useAuth()
   const [step, setStep] = useState('register') // 'register' or 'otp'
   const [formData, setFormData] = useState({
     full_name: '',
@@ -220,7 +220,7 @@ export default function Register({ language, userType }) {
         type: storedType
       };
 
-      console.log('🔄 Sending OTP Verification:', verificationData);
+      console.log('�� Sending OTP Verification:', verificationData);
 
       const response = await authAPI.verifyOTP(verificationData);
 
@@ -229,19 +229,19 @@ export default function Register({ language, userType }) {
         localStorage.removeItem('auth_phone');
         localStorage.removeItem('auth_type');
 
-        // Store token and user data
+        // Store token from registration response
         localStorage.setItem('token', response.data.token);
-        const userResponse = await authAPI.getUserProfile();
-        if (userResponse.success && userResponse.data) {
-          localStorage.setItem('user', JSON.stringify(userResponse.data));
+
+        // Store user data from registration response
+        if (response.data.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
         }
 
         // Show success message
         toast.success(language === 'ar' ? 'تم التسجيل بنجاح' : 'Registration successful');
 
-        // Navigate to appropriate dashboard
-        const redirectPath = `/${userType}/profile`;
-        navigate(redirectPath);
+        // Navigate to profile
+        window.location.href = `/${userType}/profile`;
       } else {
         throw new Error(response.message || 'Verification failed');
       }
