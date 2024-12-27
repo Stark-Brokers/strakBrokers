@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { FiMessageCircle, FiPhone, FiMail, FiClock, FiLoader } from 'react-icons/fi'
 import { toast } from 'react-hot-toast'
-import contactUsAPI from '../../services/contactUsAPI'
-import settingsAPI from '../../services/settingsAPI'
+import contactUsAPI from '../services/contactUsAPI'
+import settingsAPI from '../services/settingsAPI'
 
 export default function CustomerService({ language }) {
     const [activeTab, setActiveTab] = useState('contact')
@@ -69,7 +69,7 @@ export default function CustomerService({ language }) {
             contact: 'اتصل بنا',
             faq: 'الأسئلة الشائعة',
             support: 'ساعات الدعم',
-            email: settingsAPI.getSettingValue(settings, 'support_email') || 'جاري التحميل...',
+            email: settingsAPI.getSettingValue(settings, 'support_email') || 'جاري التحمي��...',
             phone: settingsAPI.getSettingValue(settings, 'support_phone') || 'جاري التحميل...',
             hours: 'دعم على مدار الساعة',
             form: {

@@ -11,8 +11,8 @@ import Profile from './components/renter/Profile'
 import Tours from './components/renter/Tours'
 import SavedProperties from './components/renter/SavedProperties'
 import MyBookings from './components/renter/MyBookings'
-import MapView from './components/categories/MapView'
-import CustomerService from './components/categories/CustomerService'
+import MapView from './components/map/MapView'
+import CustomerService from './components/CustomerService'
 import Home from './components/Home';
 
 // Import Owner Components

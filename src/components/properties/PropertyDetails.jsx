@@ -4,7 +4,9 @@ import { propertyAPI } from '../../services/api'
 import favoritesAPI from '../../services/favoritesAPI'
 import { FiMaximize, FiMapPin, FiHeart, FiArrowLeft } from 'react-icons/fi'
 import { IoBedOutline, IoWaterOutline } from "react-icons/io5"
+import GoogleMap from '../shared/GoogleMap'
 import BookingForm from './BookingForm'
+import { Loader } from '@googlemaps/js-api-loader'
 import {
   FaParking,
   FaSwimmingPool,
@@ -85,7 +87,8 @@ const content = {
       22: 'Garden View',
       23: 'Street View',
       24: 'Mall View'
-    }
+    },
+    propertyLocation: 'Property Location'
   },
   ar: {
     loading: 'جاري تحميل تفاصيل العقار...',
@@ -136,9 +139,10 @@ const content = {
       20: 'إطلالة بحرية',
       21: 'إطلالة على المدينة',
       22: 'إطلالة على الحديقة',
-      23: 'إطلالة على الشارع',
+      23: 'إطلالة على الطريق',
       24: 'إطلالة على المول'
-    }
+    },
+    propertyLocation: 'موقع العقار'
   }
 }
 
@@ -180,6 +184,7 @@ export default function PropertyDetails({ language }) {
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
   const [categories, setCategories] = useState([])
+  const [coordinates, setCoordinates] = useState(null)
 
   const t = content[language]
 
@@ -200,7 +205,6 @@ export default function PropertyDetails({ language }) {
           setCategories(categoriesResponse.data)
         }
       } catch (error) {
-        console.error('Failed to fetch data:', error)
         setError(error.message || t.error)
       } finally {
         setLoading(false)
@@ -208,10 +212,24 @@ export default function PropertyDetails({ language }) {
     }
 
     fetchData()
-  }, [id])
+  }, [id, t.error])
+
+  useEffect(() => {
+    if (property?.address && !coordinates && window.google?.maps) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ address: property.address }, (results, status) => {
+        if (status === 'OK' && results[0]?.geometry?.location) {
+          const location = results[0].geometry.location;
+          setCoordinates({
+            lat: location.lat(),
+            lng: location.lng()
+          });
+        }
+      });
+    }
+  }, [property, coordinates]);
 
   const handleFavorite = async () => {
-    // Check if user is logged in by looking for token
     const token = localStorage.getItem('token');
     if (!token) {
       toast.error(
@@ -233,23 +251,20 @@ export default function PropertyDetails({ language }) {
     }
 
     try {
-      if (isFavorite) {
-        const response = await favoritesAPI.removeFromFavorites(property.id);
-        if (response.success) {
-          setIsFavorite(false);
-          toast.success(language === 'ar' ? 'تم إزالة العقار من المفضلة' : 'Property removed from favorites');
-        }
-      } else {
-        const response = await favoritesAPI.addToFavorites(property.id);
-        if (response.success) {
-          setIsFavorite(true);
-          toast.success(language === 'ar' ? 'تم إضافة العقار إلى المفضلة' : 'Property added to favorites');
-        }
+      const response = await (isFavorite
+        ? favoritesAPI.removeFromFavorites(property.id)
+        : favoritesAPI.addToFavorites(property.id));
+
+      if (response.success) {
+        setIsFavorite(!isFavorite);
+        toast.success(
+          language === 'ar'
+            ? (isFavorite ? 'تم إزالة العقار من المفضلة' : 'تم إضافة العقار إلى المفضلة')
+            : (isFavorite ? 'Property removed from favorites' : 'Property added to favorites')
+        );
       }
     } catch (error) {
-      console.error('Failed to update favorite status:', error);
       if (error.response?.status === 401) {
-        // Clear token and redirect to login
         localStorage.removeItem('token');
         toast.error(
           language === 'ar'
@@ -407,6 +422,25 @@ export default function PropertyDetails({ language }) {
               </div>
             )
           })}
+
+
+
+          {/* Property Location Map */}
+          {coordinates && (
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4">{t.propertyLocation}</h2>
+              <div className="relative w-full h-[400px] bg-gray-100">
+                <div className="absolute inset-0">
+                  <GoogleMap
+                    initialLocation={coordinates}
+                    isEditable={false}
+                    language={language}
+                    onLocationSelect={() => { }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Booking Card */}

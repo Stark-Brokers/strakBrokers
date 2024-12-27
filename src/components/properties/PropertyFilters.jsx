@@ -1,574 +1,294 @@
-import { useState } from 'react'
-import { FiCheck, FiX } from 'react-icons/fi'
+import { useState, useEffect } from 'react';
+import { FiFilter, FiX } from 'react-icons/fi';
 
-// First, let's create a mapping of feature names to their IDs
-const FEATURE_IDS = {
-    parking: 1,
-    swimming_pool: 2,
-    gym: 3,
-    security: 4,
-    elevator: 5,
-    garden: 6,
-    central_ac: 7,
-    balcony: 8,
-    maid_room: 9,
-    storage: 10,
-    kitchen_appliances: 11,
-    internet: 12,
-    satellite: 13,
-    intercom: 14,
-    maintenance: 15,
-    mosque: 16,
-    shopping: 17,
-    schools: 18,
-    pets_allowed: 19,
-    sea_view: 20,
-    city_view: 21,
-    garden_view: 22,
-    street_view: 23,
-    mall_view: 24
-};
+// Comprehensive list of Saudi Arabian cities
+const MAIN_CITIES = [
+    { id: 'riyadh', label: { en: 'Riyadh', ar: 'الرياض' } },
+    { id: 'jeddah', label: { en: 'Jeddah', ar: 'جدة' } },
+    { id: 'dammam', label: { en: 'Dammam', ar: 'الدمام' } },
+];
 
-export default function PropertyFilters({ language, activeFilters = {}, onFilterChange }) {
-    const [localFilters, setLocalFilters] = useState({
-        type: activeFilters.type || '',
-        price_min: activeFilters.price_min || '',
-        price_max: activeFilters.price_max || '',
-        area_min: activeFilters.area_min || '',
-        area_max: activeFilters.area_max || '',
-        bedrooms: activeFilters.bedrooms || '',
-        features: activeFilters.features || [],
-        location: activeFilters.location || ''
+const OTHER_CITIES = [
+    { id: 'mecca', label: { en: 'Mecca', ar: 'مكة المكرمة' } },
+    { id: 'medina', label: { en: 'Medina', ar: 'المدينة المنورة' } },
+    { id: 'khobar', label: { en: 'Khobar', ar: 'الخبر' } },
+    { id: 'dhahran', label: { en: 'Dhahran', ar: 'الظهران' } },
+    { id: 'qatif', label: { en: 'Qatif', ar: 'القطيف' } },
+    { id: 'jubail', label: { en: 'Jubail', ar: 'الجبيل' } },
+    { id: 'hofuf', label: { en: 'Hofuf', ar: 'الهفوف' } },
+    { id: 'mubarraz', label: { en: 'Mubarraz', ar: 'المبرز' } },
+    { id: 'buraydah', label: { en: 'Buraydah', ar: 'بريدة' } },
+    { id: 'unaizah', label: { en: 'Unaizah', ar: 'عنيزة' } },
+    { id: 'hail', label: { en: 'Hail', ar: 'حائل' } },
+    { id: 'majmaah', label: { en: 'Majmaah', ar: 'المجمعة' } },
+    { id: 'kharj', label: { en: 'Al-Kharj', ar: 'الخرج' } },
+    { id: 'taif', label: { en: 'Taif', ar: 'الطائف' } },
+    { id: 'yanbu', label: { en: 'Yanbu', ar: 'ينبع' } },
+    { id: 'rabigh', label: { en: 'Rabigh', ar: 'رابغ' } },
+    { id: 'tabuk', label: { en: 'Tabuk', ar: 'تبوك' } },
+    { id: 'arar', label: { en: 'Arar', ar: 'عرعر' } },
+    { id: 'sakaka', label: { en: 'Sakaka', ar: 'سكاكا' } },
+    { id: 'rafha', label: { en: 'Rafha', ar: 'رفحاء' } },
+    { id: 'abha', label: { en: 'Abha', ar: 'أبها' } },
+    { id: 'khamis-mushait', label: { en: 'Khamis Mushait', ar: 'خميس مشيط' } },
+    { id: 'najran', label: { en: 'Najran', ar: 'نجران' } },
+    { id: 'jizan', label: { en: 'Jizan', ar: 'جازان' } },
+    { id: 'al-bahah', label: { en: 'Al Bahah', ar: 'الباحة' } },
+    { id: 'al-qunfudhah', label: { en: 'Al Qunfudhah', ar: 'القنفذة' } },
+    { id: 'al-rass', label: { en: 'Al Rass', ar: 'الرس' } },
+    { id: 'wadi-ad-dawasir', label: { en: 'Wadi Ad-Dawasir', ar: 'وادي الدواسر' } },
+    { id: 'dawadmi', label: { en: 'Dawadmi', ar: 'الدوادمي' } },
+    { id: 'zulfi', label: { en: 'Zulfi', ar: 'الزلفي' } },
+    { id: 'afif', label: { en: 'Afif', ar: 'عفيف' } },
+    { id: 'al-qurayyat', label: { en: 'Al-Qurayyat', ar: 'القريات' } },
+    { id: 'al-khafji', label: { en: 'Al-Khafji', ar: 'الخفجي' } },
+    { id: 'hafar-al-batin', label: { en: 'Hafar Al-Batin', ar: 'حفر الباطن' } },
+    { id: 'al-jubail', label: { en: 'Al Jubail', ar: 'الجبيل' } },
+    { id: 'al-khubar', label: { en: 'Al Khubar', ar: 'الخبر' } },
+    { id: 'al-qatif', label: { en: 'Al Qatif', ar: 'القطيف' } },
+    { id: 'al-ahsa', label: { en: 'Al-Ahsa', ar: 'الأحساء' } }
+].sort((a, b) => a.label.en.localeCompare(b.label.en));
+
+const CITIES = [...MAIN_CITIES, ...OTHER_CITIES];
+
+export default function PropertyFilters({ language, onFilterChange, isOpen, onClose }) {
+    const [filters, setFilters] = useState({
+        type: '',
+        priceMin: '',
+        priceMax: '',
+        areaMin: '',
+        areaMax: '',
+        bedrooms: '',
+        bathrooms: '',
+        city: ''
     });
 
-    // Add state for validation errors
-    const [errors, setErrors] = useState({});
-
-    // Validation function
-    const validateFilters = (filters) => {
-        const newErrors = {};
-
-        // Price range validation
-        if (filters.price_min && filters.price_max) {
-            const minPrice = parseFloat(filters.price_min);
-            const maxPrice = parseFloat(filters.price_max);
-
-            if (!isNaN(minPrice) && !isNaN(maxPrice) && minPrice > maxPrice) {
-                newErrors.price = language === 'ar'
-                    ? 'يجب أن يكون الحد الأدنى للسعر أقل من الحد الأقصى'
-                    : 'Minimum price should be less than maximum price';
-            }
-        }
-
-        // Area range validation
-        if (filters.area_min && filters.area_max) {
-            const minArea = parseFloat(filters.area_min);
-            const maxArea = parseFloat(filters.area_max);
-
-            if (!isNaN(minArea) && !isNaN(maxArea) && minArea > maxArea) {
-                newErrors.area = language === 'ar'
-                    ? 'يجب أن تكون المساحة الدنيا أقل من المساحة القصوى'
-                    : 'Minimum area should be less than maximum area';
-            }
-        }
-
-        // Validate numeric values and ranges
-        if (filters.price_min && (isNaN(parseFloat(filters.price_min)) || parseFloat(filters.price_min) < 0)) {
-            newErrors.price_min = language === 'ar' ? 'يجب أن يكون الرقم صالحًا وموجبًا' : 'Must be a valid positive number';
-        }
-        if (filters.price_max && (isNaN(parseFloat(filters.price_max)) || parseFloat(filters.price_max) < 0)) {
-            newErrors.price_max = language === 'ar' ? 'يجب أن يكون الرقم صالحًا وموجبًا' : 'Must be a valid positive number';
-        }
-        if (filters.area_min && (isNaN(parseFloat(filters.area_min)) || parseFloat(filters.area_min) < 0)) {
-            newErrors.area_min = language === 'ar' ? 'يجب أن يكون الرقم صالحًا وموجبًا' : 'Must be a valid positive number';
-        }
-        if (filters.area_max && (isNaN(parseFloat(filters.area_max)) || parseFloat(filters.area_max) < 0)) {
-            newErrors.area_max = language === 'ar' ? 'يجب أن يكون الرقم صالحًا وموجبًا' : 'Must be a valid positive number';
-        }
-
-        return newErrors;
-    };
-
-    const content = {
-        en: {
-            propertyType: 'Property Type',
-            priceRange: 'Price Range',
-            bedrooms: 'Bedrooms',
-            amenities: 'Amenities',
-            location: 'Location',
-            area: 'Area (m²)',
-            types: {
-                all: 'All Types',
-                apartment: 'Apartment',
-                villa: 'Villa',
-                office: 'Office',
-                shop: 'Shop',
-                land: 'Land'
-            },
-            priceRanges: {
-                all: 'Any Price',
-                '0-5000': 'Up to 5,000 SAR',
-                '5000-10000': '5,000 - 10,000 SAR',
-                '10000-15000': '10,000 - 15,000 SAR',
-                '15000-20000': '15,000 - 20,000 SAR',
-                '20000-30000': '20,000 - 30,000 SAR',
-                '30000-50000': '30,000 - 50,000 SAR',
-                '50000-100000': '50,000 - 100,000 SAR',
-                '100000': 'Above 100,000 SAR'
-            },
-            bedroomOptions: {
-                all: 'Any',
-                '0': 'Studio',
-                '1': '1 Bedroom',
-                '2': '2 Bedrooms',
-                '3': '3 Bedrooms',
-                '4': '4+ Bedrooms'
-            },
-            locations: {
-                all: 'All Locations',
-                riyadh: 'Riyadh',
-                jeddah: 'Jeddah',
-                dammam: 'Dammam',
-                khobar: 'Khobar'
-            },
-            amenityOptions: {
-                central_ac: 'Central AC',
-                parking: 'Parking',
-                swimming_pool: 'Swimming Pool',
-                gym: 'Gym',
-                security: '24/7 Security',
-                elevator: 'Elevator',
-                balcony: 'Balcony',
-                garden: 'Garden',
-                maid_room: "Maid's Room",
-                storage: 'Storage Room',
-                furnished: 'Furnished',
-                kitchen_appliances: 'Kitchen Appliances',
-                internet: 'Internet',
-                satellite: 'Satellite/Cable TV',
-                intercom: 'Intercom',
-                maintenance: 'Maintenance',
-                mosque: 'Nearby Mosque',
-                shopping: 'Shopping Centers',
-                schools: 'Schools Nearby',
-                pets_allowed: 'Pets Allowed'
-            },
-            customRange: 'Custom Range',
-            minPrice: 'Min Price',
-            maxPrice: 'Max Price',
-            apply: 'Apply',
-            back: 'Back',
-            reset: 'Reset Filters',
-            areaRanges: {
-                all: 'Any Size',
-                '0-100': 'Up to 100 m²',
-                '100-200': '100 - 200 m²',
-                '200-300': '200 - 300 m²',
-                '300-500': '300 - 500 m²',
-                '500-1000': '500 - 1,000 m²',
-                '1000': 'Above 1,000 m²'
-            },
-            minArea: 'Min Area',
-            maxArea: 'Max Area',
-            sqm: 'm²'
-        },
-        ar: {
-            propertyType: 'نوع العقار',
-            priceRange: 'نطاق السعر',
-            bedrooms: 'غرف النوم',
-            amenities: 'المميزات',
-            location: 'الموقع',
-            area: 'المساحة (م²)',
-            types: {
-                all: 'جميع الأنواع',
-                apartment: 'شقة',
-                villa: 'فيلا',
-                office: 'مكتب',
-                shop: 'محل',
-                land: 'أرض'
-            },
-            priceRanges: {
-                all: 'أي سعر',
-                '0-5000': 'أقل من 5,000 ريال',
-                '5000-10000': '5,000 - 10,000 ريال',
-                '10000-15000': '10,000 - 15,000 ريال',
-                '15000-20000': '15,000 - 20,000 ريال',
-                '20000-30000': '20,000 - 30,000 ريال',
-                '30000-50000': '30,000 - 50,000 ريال',
-                '50000-100000': '50,000 - 100,000 ريال',
-                '100000': 'أكثر من 100,000 ريال'
-            },
-            bedroomOptions: {
-                all: 'الكل',
-                '0': 'استوديو',
-                '1': 'غرفة نوم',
-                '2': 'غرفتين نوم',
-                '3': '3 غرف نوم',
-                '4': '4+ غرف نوم'
-            },
-            locations: {
-                all: 'كل المواقع',
-                riyadh: 'الرياض',
-                jeddah: 'جدة',
-                dammam: 'الدمام',
-                khobar: 'الخبر'
-            },
-            amenityOptions: {
-                central_ac: 'تكييف مركزي',
-                parking: 'موقف سيارات',
-                swimming_pool: 'مسبح',
-                gym: 'صالة رياضية',
-                security: 'أمن 24/7',
-                elevator: 'مصعد',
-                balcony: 'شرفة',
-                garden: 'حديقة',
-                maid_room: 'غرفة خادمة',
-                storage: 'غرفة تخزين',
-                furnished: 'مفروش',
-                kitchen_appliances: 'أجهزة مطبخ',
-                internet: 'إنترنت',
-                satellite: 'قنوات فضائية',
-                intercom: 'تصال داخلي',
-                maintenance: 'صيانة',
-                mosque: 'مسجد قريب',
-                shopping: 'مراكز تسوق',
-                schools: 'مدارس قريبة',
-                pets_allowed: 'يسمح بالحيوانات الأليفة'
-            },
-            customRange: 'نطاق مخصص',
-            minPrice: 'السعر الأدنى',
-            maxPrice: 'السعر الأعلى',
-            apply: 'تطبيق',
-            back: 'رجوع',
-            reset: 'إعادة تعيين',
-            areaRanges: {
-                all: 'أي مساحة',
-                '0-100': 'حتى 100 م²',
-                '100-200': '100 - 200 م²',
-                '200-300': '200 - 300 م²',
-                '300-500': '300 - 500 م²',
-                '500-1000': '500 - 1,000 م²',
-                '1000': 'أكثر من 1,000 م²'
-            },
-            minArea: 'الحد الأدنى للمساحة',
-            maxArea: 'الحد الأقصى للمساحة',
-            sqm: 'م²'
-        }
-    }
-
-    const t = content[language]
-
-    const handleLocalChange = (key, value) => {
-        // Clear error when user starts typing
-        setErrors(prev => ({ ...prev, [key]: undefined }));
-
-        // Handle numeric inputs
-        if (['price_min', 'price_max', 'area_min', 'area_max'].includes(key)) {
-            // Remove non-numeric characters except decimal point
-            value = value.toString().replace(/[^\d.]/g, '');
-        }
-
-        // Special handling for bedrooms
-        if (key === 'bedrooms') {
-            // If value is empty string (All option), keep it as empty string
-            if (value === '') {
-                setLocalFilters(prev => ({ ...prev, [key]: value }));
-                return;
-            }
-            // Otherwise convert to number
-            const numValue = parseInt(value);
-            if (!isNaN(numValue)) {
-                setLocalFilters(prev => ({ ...prev, [key]: numValue }));
-                return;
-            }
-        }
-
-        setLocalFilters(prev => ({
+    const handleFilterChange = (name, value) => {
+        setFilters(prev => ({
             ...prev,
-            [key]: value
+            [name]: value
         }));
     };
 
-    const handleApplyFilters = () => {
-        // Validate filters before applying
-        const validationErrors = validateFilters(localFilters);
+    // Apply filters automatically when they change
+    useEffect(() => {
+        let cleanFilters = {};
 
-        if (Object.keys(validationErrors).length > 0) {
-            setErrors(validationErrors);
-            return;
+        if (filters.type && filters.type !== '') {
+            cleanFilters.type = filters.type.toLowerCase();
         }
 
-        // Clear any previous errors
-        setErrors({});
-
-        try {
-            const apiFilters = {
-                ...localFilters,
-                // Convert string values to numbers where needed
-                price_min: localFilters.price_min ? parseFloat(localFilters.price_min.toString().replace(/,/g, '')) : '',
-                price_max: localFilters.price_max ? parseFloat(localFilters.price_max.toString().replace(/,/g, '')) : '',
-                area_min: localFilters.area_min ? parseFloat(localFilters.area_min) : '',
-                area_max: localFilters.area_max ? parseFloat(localFilters.area_max) : '',
-                // Keep bedrooms as is since we handled it in handleLocalChange
-                bedrooms: localFilters.bedrooms,
-                features: localFilters.features
-            };
-
-            // Remove empty values
-            const cleanFilters = Object.entries(apiFilters).reduce((acc, [key, value]) => {
-                if (value === undefined ||
-                    value === null ||
-                    value === '' ||
-                    (Array.isArray(value) && value.length === 0)
-                ) {
-                    return acc;
-                }
-                return { ...acc, [key]: value };
-            }, {});
-
-            onFilterChange(cleanFilters);
-        } catch (error) {
-            console.error('Error applying filters:', error);
-            setErrors({
-                general: language === 'ar'
-                    ? 'حدث خطأ أثناء تطبيق الفلاتر'
-                    : 'Error applying filters'
-            });
+        if (filters.city && filters.city !== '') {
+            cleanFilters.city = filters.city;
         }
-    };
 
-    const handleFeatureToggle = (featureKey) => {
-        const featureId = FEATURE_IDS[featureKey];
-        if (!featureId) return; // Skip if ID not found
+        if (filters.priceMin && !isNaN(parseFloat(filters.priceMin))) {
+            cleanFilters.price_min = parseFloat(filters.priceMin);
+        }
 
-        const newFeatures = localFilters.features.includes(featureId)
-            ? localFilters.features.filter(id => id !== featureId)
-            : [...localFilters.features, featureId];
+        if (filters.priceMax && !isNaN(parseFloat(filters.priceMax))) {
+            cleanFilters.price_max = parseFloat(filters.priceMax);
+        }
 
-        handleLocalChange('features', newFeatures);
-    };
+        if (filters.bedrooms && !isNaN(parseInt(filters.bedrooms))) {
+            cleanFilters.bedrooms = parseInt(filters.bedrooms);
+        }
+
+        if (filters.bathrooms && !isNaN(parseInt(filters.bathrooms))) {
+            cleanFilters.bathrooms = parseInt(filters.bathrooms);
+        }
+
+        if (filters.areaMin && !isNaN(parseFloat(filters.areaMin))) {
+            cleanFilters.area_min = parseFloat(filters.areaMin);
+        }
+
+        if (filters.areaMax && !isNaN(parseFloat(filters.areaMax))) {
+            cleanFilters.area_max = parseFloat(filters.areaMax);
+        }
+
+        onFilterChange(cleanFilters);
+    }, [filters, onFilterChange]);
 
     const resetFilters = () => {
-        const emptyFilters = {
+        setFilters({
             type: '',
-            price_min: '',
-            price_max: '',
-            area_min: '',
-            area_max: '',
+            priceMin: '',
+            priceMax: '',
+            areaMin: '',
+            areaMax: '',
             bedrooms: '',
-            features: [],
-            location: ''
-        };
-
-        // Reset local state
-        setLocalFilters(emptyFilters);
-        setErrors({});
-
-        // Notify parent component with clean empty filters
-        const cleanEmptyFilters = {
-            type: '',
-            price_min: undefined,
-            price_max: undefined,
-            area_min: undefined,
-            area_max: undefined,
-            bedrooms: undefined,
-            features: [],
-            location: ''
-        };
-
-        onFilterChange(cleanEmptyFilters);
+            bathrooms: '',
+            city: ''
+        });
     };
 
-    // Error message component
-    const ErrorMessage = ({ error }) => {
-        if (!error) return null;
-        return (
-            <p className="text-red-500 text-sm mt-1">{error}</p>
-        );
-    };
+    if (!isOpen) return null;
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Property Type */}
-                <div>
-                    <h3 className={`text-lg font-semibold mb-3 ${language === 'ar' ? 'font-arabic' : ''
-                        }`}>
-                        {t.propertyType}
-                    </h3>
-                    <select
-                        value={localFilters.type}
-                        onChange={(e) => handleLocalChange('type', e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-primary"
-                    >
-                        <option value="">{t.types.all}</option>
-                        {Object.entries(t.types).filter(([key]) => key !== 'all').map(([value, label]) => (
-                            <option key={value} value={value}>
-                                {label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="filter-panel" role="dialog" aria-modal="true">
+            {/* Backdrop */}
+            <div className="fixed inset-0 bg-black bg-opacity-25 transition-opacity" onClick={onClose}></div>
 
-                {/* Price Range */}
-                <div>
-                    <h3 className={`text-lg font-semibold mb-3 ${language === 'ar' ? 'font-arabic' : ''
-                        }`}>
-                        {t.priceRange}
-                    </h3>
-                    <div className="flex gap-2">
-                        <div className="w-full">
-                            <input
-                                type="number"
-                                placeholder={t.minPrice}
-                                value={localFilters.price_min}
-                                onChange={(e) => handleLocalChange('price_min', e.target.value)}
-                                className={`w-full p-2 border ${errors.price_min || errors.price ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:border-primary`}
-                            />
-                            <ErrorMessage error={errors.price_min} />
-                        </div>
-                        <div className="w-full">
-                            <input
-                                type="number"
-                                placeholder={t.maxPrice}
-                                value={localFilters.price_max}
-                                onChange={(e) => handleLocalChange('price_max', e.target.value)}
-                                className={`w-full p-2 border ${errors.price_max || errors.price ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:border-primary`}
-                            />
-                            <ErrorMessage error={errors.price_max} />
-                        </div>
-                    </div>
-                    {errors.price && <ErrorMessage error={errors.price} />}
-                </div>
-
-                {/* Area Range */}
-                <div>
-                    <h3 className={`text-lg font-semibold mb-3 ${language === 'ar' ? 'font-arabic' : ''
-                        }`}>
-                        {t.area}
-                    </h3>
-                    <div className="flex gap-2">
-                        <div className="w-full">
-                            <input
-                                type="number"
-                                placeholder={`${t.minArea} ${t.sqm}`}
-                                value={localFilters.area_min}
-                                onChange={(e) => handleLocalChange('area_min', e.target.value)}
-                                className={`w-full p-2 border ${errors.area_min || errors.area ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:border-primary`}
-                            />
-                            <ErrorMessage error={errors.area_min} />
-                        </div>
-                        <div className="w-full">
-                            <input
-                                type="number"
-                                placeholder={`${t.maxArea} ${t.sqm}`}
-                                value={localFilters.area_max}
-                                onChange={(e) => handleLocalChange('area_max', e.target.value)}
-                                className={`w-full p-2 border ${errors.area_max || errors.area ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:border-primary`}
-                            />
-                            <ErrorMessage error={errors.area_max} />
-                        </div>
-                    </div>
-                    {errors.area && <ErrorMessage error={errors.area} />}
-                </div>
-
-                {/* Bedrooms */}
-                <div>
-                    <h3 className={`text-lg font-semibold mb-3 ${language === 'ar' ? 'font-arabic' : ''
-                        }`}>
-                        {t.bedrooms}
-                    </h3>
-                    <select
-                        value={localFilters.bedrooms}
-                        onChange={(e) => handleLocalChange('bedrooms', e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-primary"
-                    >
-                        <option value="">{t.bedroomOptions.all}</option>
-                        {Object.entries(t.bedroomOptions)
-                            .filter(([key]) => key !== 'all')
-                            .map(([value, label]) => (
-                                <option key={value} value={value}>
-                                    {label}
-                                </option>
-                            ))}
-                    </select>
-                </div>
-
-                {/* Location */}
-                <div>
-                    <h3 className={`text-lg font-semibold mb-3 ${language === 'ar' ? 'font-arabic' : ''
-                        }`}>
-                        {t.location}
-                    </h3>
-                    <select
-                        value={localFilters.location}
-                        onChange={(e) => handleLocalChange('location', e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-primary"
-                    >
-                        <option value="">{t.locations.all}</option>
-                        {Object.entries(t.locations)
-                            .filter(([key]) => key !== 'all')
-                            .map(([value, label]) => (
-                                <option key={value} value={value}>
-                                    {label}
-                                </option>
-                            ))}
-                    </select>
-                </div>
-            </div>
-
-            {/* Features */}
-            <div className="mt-6">
-                <h3 className={`text-lg font-semibold mb-3 ${language === 'ar' ? 'font-arabic' : ''
-                    }`}>
-                    {t.amenities}
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {Object.entries(t.amenityOptions).map(([key, label]) => {
-                        const featureId = FEATURE_IDS[key];
-                        if (!featureId) return null; // Skip if no matching ID
-
-                        return (
+            {/* Filter Panel */}
+            <div className="relative min-h-screen md:min-h-0 flex items-center justify-center p-4">
+                <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-auto">
+                    <div className="p-6 space-y-4">
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-semibold text-gray-900">
+                                {language === 'ar' ? 'تصفية العقارات' : 'Filter Properties'}
+                            </h2>
                             <button
-                                key={key}
-                                onClick={() => handleFeatureToggle(key)}
-                                className={`flex items-center justify-center gap-2 p-2 rounded-md border ${localFilters.features.includes(featureId)
-                                    ? 'bg-primary text-white border-primary'
-                                    : 'border-gray-300 hover:border-primary'
-                                    }`}
+                                onClick={onClose}
+                                className="text-gray-400 hover:text-gray-500"
                             >
-                                {localFilters.features.includes(featureId) && <FiCheck />}
-                                {label}
+                                <FiX className="w-5 h-5" />
                             </button>
-                        );
-                    })}
-                </div>
-            </div>
+                        </div>
 
-            {/* Reset and Apply Buttons */}
-            <div className="mt-6 flex flex-col gap-2">
-                {errors.general && (
-                    <div className="bg-red-50 p-2 rounded-md">
-                        <ErrorMessage error={errors.general} />
+                        {/* Property Type and City */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    {language === 'ar' ? 'نوع العقار' : 'Property Type'}
+                                </label>
+                                <select
+                                    value={filters.type}
+                                    onChange={(e) => handleFilterChange('type', e.target.value)}
+                                    className="w-full rounded-md border border-gray-200 p-2 outline-none focus:border-[#BE092B] appearance-none"
+                                >
+                                    <option value="">{language === 'ar' ? 'الكل' : 'All'}</option>
+                                    <option value="apartment">{language === 'ar' ? 'شقة' : 'Apartment'}</option>
+                                    <option value="villa">{language === 'ar' ? 'فيلا' : 'Villa'}</option>
+                                    <option value="office">{language === 'ar' ? 'مكتب' : 'Office'}</option>
+                                    <option value="shop">{language === 'ar' ? 'محل' : 'Shop'}</option>
+                                    <option value="land">{language === 'ar' ? 'أرض' : 'Land'}</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    {language === 'ar' ? 'المدينة' : 'City'}
+                                </label>
+                                <select
+                                    value={filters.city}
+                                    onChange={(e) => handleFilterChange('city', e.target.value)}
+                                    className="w-full rounded-md border border-gray-200 p-2 outline-none focus:border-[#BE092B] appearance-none"
+                                >
+                                    <option value="">{language === 'ar' ? 'كل المدن' : 'All Cities'}</option>
+                                    {CITIES.map(city => (
+                                        <option key={city.id} value={city.id}>
+                                            {city.label[language === 'ar' ? 'ar' : 'en']}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Price Range */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {language === 'ar' ? 'السعر' : 'Price Range'}
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <input
+                                    type="number"
+                                    placeholder={language === 'ar' ? 'من' : 'Min'}
+                                    value={filters.priceMin}
+                                    onChange={(e) => handleFilterChange('priceMin', e.target.value)}
+                                    className="w-full bg-white border border-gray-200 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-[#BE092B] focus:border-[#BE092B] transition-colors [&:not(:placeholder-shown)]:bg-[#BE092B]/5 hover:border-[#BE092B]/30"
+                                />
+                                <input
+                                    type="number"
+                                    placeholder={language === 'ar' ? 'إلى' : 'Max'}
+                                    value={filters.priceMax}
+                                    onChange={(e) => handleFilterChange('priceMax', e.target.value)}
+                                    className="w-full bg-white border border-gray-200 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-[#BE092B] focus:border-[#BE092B] transition-colors [&:not(:placeholder-shown)]:bg-[#BE092B]/5 hover:border-[#BE092B]/30"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Area Range */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {language === 'ar' ? 'المساحة' : 'Area'} (m²)
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <input
+                                    type="number"
+                                    placeholder={language === 'ar' ? 'من' : 'Min'}
+                                    value={filters.areaMin}
+                                    onChange={(e) => handleFilterChange('areaMin', e.target.value)}
+                                    className="w-full bg-white border border-gray-200 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-[#BE092B] focus:border-[#BE092B] transition-colors [&:not(:placeholder-shown)]:bg-[#BE092B]/5 hover:border-[#BE092B]/30"
+                                />
+                                <input
+                                    type="number"
+                                    placeholder={language === 'ar' ? 'إلى' : 'Max'}
+                                    value={filters.areaMax}
+                                    onChange={(e) => handleFilterChange('areaMax', e.target.value)}
+                                    className="w-full bg-white border border-gray-200 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-[#BE092B] focus:border-[#BE092B] transition-colors [&:not(:placeholder-shown)]:bg-[#BE092B]/5 hover:border-[#BE092B]/30"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Rooms */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    {language === 'ar' ? 'غرف النوم' : 'Bedrooms'}
+                                </label>
+                                <select
+                                    value={filters.bedrooms}
+                                    onChange={(e) => handleFilterChange('bedrooms', e.target.value)}
+                                    className="w-full rounded-md border border-gray-200 p-2 outline-none focus:border-[#BE092B] appearance-none"
+                                >
+                                    <option value="">{language === 'ar' ? 'الكل' : 'All'}</option>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                                        <option key={num} value={num}>
+                                            {num}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    {language === 'ar' ? 'الحمامات' : 'Bathrooms'}
+                                </label>
+                                <select
+                                    value={filters.bathrooms}
+                                    onChange={(e) => handleFilterChange('bathrooms', e.target.value)}
+                                    className="w-full rounded-md border border-gray-200 p-2 outline-none focus:border-[#BE092B] appearance-none"
+                                >
+                                    <option value="">{language === 'ar' ? 'الكل' : 'All'}</option>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                                        <option key={num} value={num}>
+                                            {num}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex justify-end gap-4 pt-4">
+                            <button
+                                onClick={resetFilters}
+                                className="px-4 py-2 text-sm text-[#BE092B] hover:bg-red-50 rounded-md transition-colors flex items-center gap-2"
+                            >
+                                <FiX className="w-4 h-4" />
+                                <span>{language === 'ar' ? 'إعادة تعيين' : 'Reset'}</span>
+                            </button>
+                            <button
+                                onClick={onClose}
+                                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                                aria-label={language === 'ar' ? 'إغلاق' : 'Close'}
+                            >
+                                <FiX className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
-                )}
-                <div className="flex justify-between">
-                    <button
-                        onClick={resetFilters}
-                        className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900"
-                    >
-                        <FiX />
-                        {t.reset}
-                    </button>
-
-                    <button
-                        onClick={handleApplyFilters}
-                        className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
-                    >
-                        {t.apply}
-                    </button>
                 </div>
             </div>
         </div>
-    )
-} 
+    );
+}

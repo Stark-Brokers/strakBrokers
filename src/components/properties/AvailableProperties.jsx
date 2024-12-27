@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { propertyAPI } from '../../services/api'
 import favoritesAPI from '../../services/favoritesAPI'
 import PropertyFilters from './PropertyFilters'
-import { FiHeart, FiMaximize, FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi'
+import { FiHeart, FiMaximize, FiChevronLeft, FiChevronRight, FiX, FiFilter } from 'react-icons/fi'
 import { IoBedOutline, IoWaterOutline, IoLocationOutline } from "react-icons/io5"
 import React from 'react';
 import { toast } from 'react-hot-toast';
@@ -389,230 +389,144 @@ PropertyCard.displayName = 'PropertyCard';
 
 export default function AvailableProperties({ language }) {
     const navigate = useNavigate();
-    const [properties, setProperties] = useState([]);
+    const [allProperties, setAllProperties] = useState([]); // Store all properties
+    const [filteredProperties, setFilteredProperties] = useState([]); // Store filtered properties
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [totalItems, setTotalItems] = useState(0);
-    const [filters, setFilters] = useState({
-        type: '',
-        price_min: '',
-        price_max: '',
-        area_min: '',
-        area_max: '',
-        bedrooms: '',
-        features: [],
-        location: ''
-    });
-    const [showFilters, setShowFilters] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
+    const [filters, setFilters] = useState({});
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-    const createSearchParams = useCallback((page, filters) => {
-        const params = new URLSearchParams();
-        params.append('page', page);
-        params.append('per_page', 15);
-        params.append('status', 'available');
-
-        Object.entries(filters).forEach(([key, value]) => {
-            // Skip empty values
-            if (value === undefined ||
-                value === null ||
-                value === '' ||
-                (Array.isArray(value) && value.length === 0)
-            ) {
-                return;
-            }
-
-            // Handle features array
-            if (key === 'features' && Array.isArray(value)) {
-                value.forEach(featureId => params.append('features[]', featureId));
-                return;
-            }
-
-            // Handle price filters
-            if (key === 'price_min' || key === 'price_max') {
-                const numValue = parseFloat(value.toString().replace(/[^\d.]/g, ''));
-                if (!isNaN(numValue) && numValue > 0) {
-                    params.append(key, numValue);
-                }
-                return;
-            }
-
-            // Handle area filters
-            if (key === 'area_min' || key === 'area_max') {
-                const numValue = parseFloat(value.toString().replace(/[^\d.]/g, ''));
-                if (!isNaN(numValue) && numValue > 0) {
-                    params.append(key, numValue);
-                }
-                return;
-            }
-
-            // Handle bedrooms - ensure exact match
-            if (key === 'bedrooms') {
-                // Value should already be a number from PropertyFilters
-                if (typeof value === 'number' && value >= 0) {
-                    params.append(key, value);
-                }
-                return;
-            }
-
-            // Handle other string values
-            params.append(key, value.toString().trim());
-        });
-
-        // Log the final params for debugging
-        console.log('Search Params:', Object.fromEntries(params.entries()));
-        return params;
-    }, []);
-
-    const fetchProperties = useCallback(async (page = 1) => {
+    // Fetch all properties once
+    const fetchProperties = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
 
-            const params = createSearchParams(page, filters);
+            const params = new URLSearchParams();
+            params.append('status', 'available');
+
             const response = await propertyAPI.getAvailableProperties(params);
+            console.log('API Response:', response);
 
-            console.log('API Response:', {
-                total: response.data.total,
-                currentPage: response.data.currentPage,
-                lastPage: response.data.lastPage,
-                perPage: response.data.perPage,
-                itemsCount: response.data.items?.length
-            });
-
-            if (!response?.data?.items || response.data.items.length === 0) {
-                setProperties([]);
-                setTotalItems(0);
-                setTotalPages(1);
-                setCurrentPage(1);
-
-                const hasActiveFilters = Object.keys(filters).some(key =>
-                    filters[key] && (Array.isArray(filters[key]) ? filters[key].length > 0 : true)
-                );
-
-                if (hasActiveFilters) {
-                    setError(content[language].noMatches);
-                }
+            if (!response?.data?.items) {
+                setAllProperties([]);
+                setFilteredProperties([]);
                 return;
             }
 
-            const { items, total, currentPage, lastPage, perPage } = response.data;
+            const { items } = response.data;
+            setAllProperties(items);
+            setFilteredProperties(items);
 
-            setProperties(items);
-            setTotalItems(total || 0);
-            setTotalPages(lastPage || 1);
-            setCurrentPage(currentPage || page);
-            setError(null);
 
-            console.log('Updated State:', {
-                totalItems: total,
-                currentPage: currentPage,
-                totalPages: lastPage,
-                itemsCount: items.length
-            });
 
         } catch (error) {
-            console.error('Pagination error:', error);
-            if (error.response?.status === 404 && error.response?.data?.message === 'No data found') {
-                setProperties([]);
-                setTotalItems(0);
-                setTotalPages(1);
-                setCurrentPage(1);
-
-                const hasActiveFilters = Object.keys(filters).some(key =>
-                    filters[key] && (Array.isArray(filters[key]) ? filters[key].length > 0 : true)
-                );
-
-                if (hasActiveFilters) {
-                    setError(content[language].noMatches);
-                }
-            } else {
-                setError(
-                    language === 'ar'
-                        ? 'عذراً، حدث خطأ أثناء تحميل العقارات. يرجى المحاولة مرة أخرى.'
-                        : 'Sorry, there was an error loading properties. Please try again.'
-                );
-            }
+            console.error('Error fetching properties:', error);
+            setError(
+                language === 'ar'
+                    ? 'عذراً، حدث خطأ أثناء تحميل العقارات. يرجى المحاولة مرة أخرى.'
+                    : 'Sorry, there was an error loading properties. Please try again.'
+            );
+            setAllProperties([]);
+            setFilteredProperties([]);
         } finally {
             setLoading(false);
         }
-    }, [filters, language, createSearchParams]);
+    }, [language]);
 
+    // Initial fetch
     useEffect(() => {
-        // Reset to first page when filters change
-        setCurrentPage(1);
-        fetchProperties(1);
-    }, [filters, fetchProperties]);
+        fetchProperties();
+    }, [fetchProperties]);
+
+    // Apply filters locally
+    const applyFilters = useCallback(() => {
+        console.log('Applying filters:', filters);
+        let filtered = [...allProperties];
+
+        if (filters.type && filters.type !== '') {
+            filtered = filtered.filter(property => {
+                console.log('Type comparison:', {
+                    propertyType: property.type,
+                    filterType: filters.type,
+                    matches: property.type?.toLowerCase() === filters.type.toLowerCase()
+                });
+                return property.type?.toLowerCase() === filters.type.toLowerCase();
+            });
+        }
+
+        if (filters.city && filters.city !== '') {
+            filtered = filtered.filter(property => {
+                // Check if the address contains the city name
+                const cityName = filters.city.toLowerCase();
+                const address = property.address?.toLowerCase() || '';
+                console.log('City comparison:', {
+                    address: address,
+                    cityName: cityName,
+                    matches: address.includes(cityName)
+                });
+                return address.includes(cityName);
+            });
+        }
+
+        if (filters.price_min && !isNaN(parseFloat(filters.price_min))) {
+            filtered = filtered.filter(property =>
+                property.price && parseFloat(property.price) >= parseFloat(filters.price_min)
+            );
+        }
+
+        if (filters.price_max && !isNaN(parseFloat(filters.price_max))) {
+            filtered = filtered.filter(property =>
+                property.price && parseFloat(property.price) <= parseFloat(filters.price_max)
+            );
+        }
+
+        if (filters.bedrooms && !isNaN(parseInt(filters.bedrooms))) {
+            filtered = filtered.filter(property =>
+                property.number_bedroom && parseInt(property.number_bedroom) === parseInt(filters.bedrooms)
+            );
+        }
+
+        if (filters.bathrooms && !isNaN(parseInt(filters.bathrooms))) {
+            filtered = filtered.filter(property =>
+                property.number_bathroom && parseInt(property.number_bathroom) === parseInt(filters.bathrooms)
+            );
+        }
+
+        if (filters.area_min && !isNaN(parseFloat(filters.area_min))) {
+            filtered = filtered.filter(property =>
+                property.area && parseFloat(property.area) >= parseFloat(filters.area_min)
+            );
+        }
+
+        if (filters.area_max && !isNaN(parseFloat(filters.area_max))) {
+            filtered = filtered.filter(property =>
+                property.area && parseFloat(property.area) <= parseFloat(filters.area_max)
+            );
+        }
+
+        console.log('Filtered properties:', filtered.length);
+        setFilteredProperties(filtered);
+    }, [filters, allProperties]);
+
+    // Apply filters whenever they change
+    useEffect(() => {
+        applyFilters();
+    }, [applyFilters]);
 
     const handleNavigate = useCallback((id) => {
         navigate(`/properties/${id}`);
     }, [navigate]);
 
     const handleApplyFilters = useCallback((newFilters) => {
-        console.log('Received filters:', newFilters);
-
-        // Clean up and format filter values
-        const cleanFilters = Object.entries(newFilters).reduce((acc, [key, value]) => {
-            // Skip undefined/null values
-            if (value === undefined || value === null) {
-                return { ...acc, [key]: '' };
-            }
-
-            // Handle price values
-            if (key === 'price_min' || key === 'price_max') {
-                const numValue = parseFloat(value.toString().replace(/[^\d.]/g, ''));
-                return { ...acc, [key]: !isNaN(numValue) && numValue > 0 ? numValue : '' };
-            }
-
-            // Handle area values
-            if (key === 'area_min' || key === 'area_max') {
-                const numValue = parseFloat(value.toString().replace(/[^\d.]/g, ''));
-                return { ...acc, [key]: !isNaN(numValue) && numValue > 0 ? numValue : '' };
-            }
-
-            // Handle bedrooms - keep as number if it is one
-            if (key === 'bedrooms') {
-                return { ...acc, [key]: typeof value === 'number' ? value : '' };
-            }
-
-            // Handle arrays (features)
-            if (Array.isArray(value)) {
-                return { ...acc, [key]: value };
-            }
-
-            // Handle string values
-            return { ...acc, [key]: value.toString().trim() };
-        }, {});
-
-        console.log('Cleaned filters:', cleanFilters);
-        setCurrentPage(1);
-        setFilters(cleanFilters);
+        console.log('Setting new filters:', newFilters);
+        setFilters(newFilters);
     }, []);
 
-    const handlePageChange = useCallback((newPage) => {
-        if (newPage < 1 || newPage > totalPages) return;
-        setCurrentPage(newPage);
-        fetchProperties(newPage);
-    }, [totalPages, fetchProperties]);
-
     const resetFilters = useCallback(() => {
-        const emptyFilters = {
-            type: '',
-            price_min: '',
-            price_max: '',
-            area_min: '',
-            area_max: '',
-            bedrooms: '',
-            features: [],
-            location: ''
-        };
-        setFilters(emptyFilters);
-        setCurrentPage(1);
-        setError(null);
-        // Force a new fetch with empty filters
-        fetchProperties(1);
-    }, [fetchProperties]);
+        setFilters({});
+        setFilteredProperties(allProperties);
+    }, [allProperties]);
 
     const t = content[language];
 
@@ -633,35 +547,35 @@ export default function AvailableProperties({ language }) {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <h1 className={`text-2xl font-bold ${language === 'ar' ? 'font-arabic' : ''}`}>
                     {t.title}
                 </h1>
-                <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="bg-primary text-white rounded-lg text-sm md:text-base px-3 py-1.5 md:px-4 md:py-2"
-                >
-                    {showFilters ? t.hideFilters : t.showFilters}
-                </button>
-            </div>
-
-            {showFilters && (
-                <div className="mb-8">
+                <div className="flex justify-end">
+                    <button
+                        onClick={() => setIsFilterOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+                    >
+                        <FiFilter className="w-5 h-5 text-[#BE092B]" />
+                        <span className="text-sm font-medium">
+                            {language === 'ar' ? 'تصفية العقارات' : 'Filter Properties'}
+                        </span>
+                    </button>
                     <PropertyFilters
                         language={language}
-                        activeFilters={filters}
                         onFilterChange={handleApplyFilters}
+                        isOpen={isFilterOpen}
+                        onClose={() => setIsFilterOpen(false)}
                     />
                 </div>
-            )}
+            </div>
 
-            {/* Show error message in a non-blocking banner */}
-            {error && error.includes('error loading') && (
+            {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                     <div className="flex justify-between items-center">
                         <p className="text-red-600">{error}</p>
                         <button
-                            onClick={() => fetchProperties(currentPage)}
+                            onClick={fetchProperties}
                             className="text-primary hover:text-primary-dark underline ml-4"
                         >
                             {language === 'ar' ? 'إعادة المحاولة' : 'Try Again'}
@@ -670,12 +584,9 @@ export default function AvailableProperties({ language }) {
                 </div>
             )}
 
-            {/* Show properties or empty state */}
-            {properties.length === 0 ? (
+            {filteredProperties.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-lg">
-                    {Object.keys(filters).some(key =>
-                        filters[key] && (Array.isArray(filters[key]) ? filters[key].length > 0 : true)
-                    ) ? (
+                    {Object.keys(filters).length > 0 ? (
                         <>
                             <p className="text-gray-500 mb-2">{t.noMatches}</p>
                             <p className="text-gray-400">
@@ -693,58 +604,16 @@ export default function AvailableProperties({ language }) {
                     )}
                 </div>
             ) : (
-                <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                        {properties.map(property => (
-                            <PropertyCard
-                                key={property.id}
-                                property={property}
-                                language={language}
-                                onNavigate={handleNavigate}
-                            />
-                        ))}
-                    </div>
-
-                    {/* Updated Pagination UI */}
-                    <div className="flex justify-center items-center gap-4 mt-8 py-4 border-t border-gray-100">
-                        <button
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            className={`flex items-center justify-center w-10 h-10 rounded-lg border ${currentPage === 1
-                                ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                                : 'border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400'
-                                }`}
-                            aria-label="Previous page"
-                        >
-                            <FiChevronLeft className="w-5 h-5" />
-                        </button>
-
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600">
-                                {language === 'ar' ? 'صفحة' : 'Page'}
-                            </span>
-                            <span className="font-medium text-gray-900">
-                                {currentPage}
-                            </span>
-                            <span className="text-gray-400">/</span>
-                            <span className="text-gray-600">
-                                {totalPages}
-                            </span>
-                        </div>
-
-                        <button
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            className={`flex items-center justify-center w-10 h-10 rounded-lg border ${currentPage === totalPages
-                                ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                                : 'border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400'
-                                }`}
-                            aria-label="Next page"
-                        >
-                            <FiChevronRight className="w-5 h-5" />
-                        </button>
-                    </div>
-                </>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredProperties.map(property => (
+                        <PropertyCard
+                            key={property.id}
+                            property={property}
+                            language={language}
+                            onNavigate={handleNavigate}
+                        />
+                    ))}
+                </div>
             )}
         </div>
     );

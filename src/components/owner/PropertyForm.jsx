@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { FiUpload, FiX } from 'react-icons/fi'
+import { FiUpload, FiX, FiMapPin } from 'react-icons/fi'
 import { propertyAPI } from '../../services/api'
+import GoogleMap from '../shared/GoogleMap'
 
 export default function PropertyForm({ language }) {
   const { id } = useParams()
@@ -17,16 +18,19 @@ export default function PropertyForm({ language }) {
     number_bedroom: '',
     number_bathroom: '',
     area: '',
-    city: '',
-    district: '',
-    street: '',
-    building_number: '',
     features: [],
-    image: []
+    image: [],
+    latitude: '',
+    longitude: ''
   })
   const [submitStatus, setSubmitStatus] = useState({ success: false, message: '' })
   const [errors, setErrors] = useState({})
   const [previewImages, setPreviewImages] = useState([])
+  const [location, setLocation] = useState({
+    latitude: '',
+    longitude: '',
+    address: ''
+  })
 
   const content = {
     en: {
@@ -63,7 +67,9 @@ export default function PropertyForm({ language }) {
         city: 'City',
         district: 'District',
         street: 'Street Name',
-        building_number: 'Building Number'
+        building_number: 'Building Number',
+        selectLocation: 'Select Location (Click on map or drag marker)',
+        locationError: 'Please select a location on the map'
       },
       types: {
         apartment: 'Apartment',
@@ -148,7 +154,9 @@ export default function PropertyForm({ language }) {
         city: 'المدينة',
         district: 'الحي',
         street: 'اسم الشارع',
-        building_number: 'رقم المبنى'
+        building_number: 'رقم ا��مبنى',
+        selectLocation: 'حدد الموقع (انقر على الخريطة أو اسحب العلامة)',
+        locationError: 'الرجاء تحديد موقع على الخريطة'
       },
       types: {
         apartment: 'شقة',
@@ -355,10 +363,24 @@ export default function PropertyForm({ language }) {
     setPreviewImages(prev => prev.filter((_, i) => i !== index))
   }
 
+
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setErrors({})
     setLoading(true)
+
+    // Add location validation
+    if (!location.latitude || !location.longitude || !location.address) {
+      setErrors(prev => ({
+        ...prev,
+        location: language === 'ar'
+          ? 'يرجى تحديد الموقع على الخريطة'
+          : 'Please select a location on the map'
+      }));
+      setLoading(false);
+      return;
+    }
 
     try {
       // Validate required fields
@@ -368,10 +390,6 @@ export default function PropertyForm({ language }) {
       if (!formData.price) validationErrors.price = 'The price field is required.'
       if (!formData.type) validationErrors.type = 'The type field is required.'
       if (!formData.area) validationErrors.area = 'The area field is required.'
-      if (!formData.city) validationErrors.city = 'City is required.'
-      if (!formData.district) validationErrors.district = 'District is required.'
-      if (!formData.street) validationErrors.street = 'Street name is required.'
-      if (!formData.building_number) validationErrors.building_number = 'Building number is required.'
       if (!id && !formData.image?.length) validationErrors.image = 'At least one image is required.'
 
       if (Object.keys(validationErrors).length > 0) {
@@ -379,14 +397,6 @@ export default function PropertyForm({ language }) {
         setLoading(false)
         return
       }
-
-      // Combine address fields
-      const fullAddress = [
-        formData.building_number,
-        formData.street,
-        formData.district,
-        formData.city
-      ].filter(Boolean).join(', ')
 
       // Create FormData instance
       const submitFormData = new FormData()
@@ -397,7 +407,12 @@ export default function PropertyForm({ language }) {
       submitFormData.append('type', formData.type)
       submitFormData.append('price', parseFloat(formData.price))
       submitFormData.append('area', parseFloat(formData.area))
-      submitFormData.append('address', fullAddress)
+
+      // Add location data
+      submitFormData.append('latitude', location.latitude)
+      submitFormData.append('longitude', location.longitude)
+      submitFormData.append('address', location.address)
+      submitFormData.append('full_address', location.address)
 
       // Add features as array
       if (formData.features && formData.features.length > 0) {
@@ -463,13 +478,22 @@ export default function PropertyForm({ language }) {
       setSubmitStatus({
         success: false,
         message: language === 'ar'
-          ? (id ? 'حدث خطأ أثناء تحديث العقار' : 'حدث خطأ أثناء حفظ العقار')
+          ? (id ? 'حدث خطأ أثناء تحديث العقار' : 'حدث خطأ أثناء حفظ ال��قار')
           : (id ? 'Failed to update property' : 'Failed to save property')
       })
     } finally {
       setLoading(false)
     }
   }
+
+  const handleLocationSelect = (locationData) => {
+    setLocation(locationData);
+    setFormData(prev => ({
+      ...prev,
+      latitude: locationData.latitude,
+      longitude: locationData.longitude
+    }));
+  };
 
   const FieldError = ({ error }) => {
     if (!error) return null
@@ -620,84 +644,54 @@ export default function PropertyForm({ language }) {
           </div>
         </section>
 
-        {/* Replace the old address field with this new Location section */}
+        {/* Location Section */}
         <section>
           <h2 className={`text-xl font-semibold mb-4 ${language === 'ar' ? 'font-arabic' : ''}`}>
             {t.location}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.fields.city}
-              </label>
-              <select
-                required
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-              >
-                <option value="">{language === 'ar' ? 'اختر المدينة' : 'Select City'}</option>
-                {Object.entries(t.cities || {
-                  riyadh: language === 'ar' ? 'الرياض' : 'Riyadh',
-                  jeddah: language === 'ar' ? 'جدة' : 'Jeddah',
-                  dammam: language === 'ar' ? 'الدمام' : 'Dammam',
-                  khobar: language === 'ar' ? 'الخبر' : 'Khobar',
-                  mecca: language === 'ar' ? 'مكة المكرمة' : 'Mecca',
-                  medina: language === 'ar' ? 'المدينة المنورة' : 'Medina',
-                  taif: language === 'ar' ? 'الطائف' : 'Taif',
-                  abha: language === 'ar' ? 'أبها' : 'Abha'
-                }).map(([key, value]) => (
-                  <option key={key} value={value}>{value}</option>
-                ))}
-              </select>
-              {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city}</p>}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.fields.district}
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.district}
-                onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                placeholder={language === 'ar' ? 'أدخل اسم الحي' : 'Enter district name'}
-              />
-              {errors.district && <p className="mt-1 text-sm text-red-600">{errors.district}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.fields.street}
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.street}
-                onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                placeholder={language === 'ar' ? 'أدخل اسم الشارع' : 'Enter street name'}
-              />
-              {errors.street && <p className="mt-1 text-sm text-red-600">{errors.street}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.fields.building_number}
-                <span className="text-gray-400 ml-1">(Optional)</span>
-              </label>
-              <input
-                type="text"
-                value={formData.building_number}
-                onChange={(e) => setFormData({ ...formData, building_number: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                placeholder={language === 'ar' ? 'أدخل رقم المبنى' : 'Enter building number'}
-              />
-              {errors.building_number && <p className="mt-1 text-sm text-red-600">{errors.building_number}</p>}
-            </div>
+          {/* Map Component */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t.fields.selectLocation}
+            </label>
+            <GoogleMap
+              onLocationSelect={handleLocationSelect}
+              initialLocation={id ? {
+                lat: parseFloat(formData.latitude) || 24.7136,
+                lng: parseFloat(formData.longitude) || 46.6753
+              } : null}
+              language={language}
+            />
           </div>
+
+          {/* Display selected address */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t.fields.address}
+            </label>
+            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+              <FiMapPin className="text-primary" />
+              <span className="text-gray-700">
+                {location.address || (language === 'ar' ? 'لم يتم تحديد العنوان بعد' : 'No address selected yet')}
+              </span>
+            </div>
+            {errors.location && (
+              <p className="mt-1 text-sm text-red-600">{t.fields.locationError}</p>
+            )}
+          </div>
+
+          {/* Hidden input fields for latitude and longitude */}
+          <input
+            type="hidden"
+            name="latitude"
+            value={formData.latitude}
+          />
+          <input
+            type="hidden"
+            name="longitude"
+            value={formData.longitude}
+          />
         </section>
 
         {/* Features Section */}

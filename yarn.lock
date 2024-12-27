@@ -231,7 +231,7 @@
   dependencies:
     levn "^0.4.1"
 
-"@googlemaps/js-api-loader@1.16.8":
+"@googlemaps/js-api-loader@^1.16.8", "@googlemaps/js-api-loader@1.16.8":
   version "1.16.8"
   resolved "https://registry.npmjs.org/@googlemaps/js-api-loader/-/js-api-loader-1.16.8.tgz"
   integrity sha512-CROqqwfKotdO6EBjZO/gQGVTbeDps5V7Mt9+8+5Q+jTg5CRMi3Ii/L9PmV3USROrt2uWxtGzJHORmByxyo9pSQ==
@@ -623,11 +623,6 @@ available-typed-arrays@^1.0.7:
   integrity sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==
   dependencies:
     possible-typed-array-names "^1.0.0"
-
-axi@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.npmjs.org/axi/-/axi-1.0.0.tgz"
-  integrity sha512-uRE/Vyu5otYKKOu0+vchwHAr0XUTHvkymtSyOUcL1y7mchNSVayThW+eWrtAC7qbTwk7FxpZJokG0VejvaPMDw==
 
 axios@^1.7.7:
   version "1.7.7"
@@ -2363,8 +2358,9 @@ source-map-js@^1.2.1:
   version "0.0.0"
   resolved "file:"
   dependencies:
+    "@googlemaps/js-api-loader" "^1.16.8"
+    "@react-google-maps/api" "^2.20.3"
     "@tailwindcss/typography" "^0.5.15"
-    axi "^1.0.0"
     axios "^1.7.7"
     react "^18.3.1"
     react-dom "^18.3.1"
