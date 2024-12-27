@@ -1,10 +1,12 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-maps/api';
+import { GoogleMap, MarkerF, InfoWindowF } from '@react-google-maps/api';
 import { useNavigate } from 'react-router-dom';
 import { propertyAPI } from '../../services/api';
 import { FiMaximize, FiFilter } from 'react-icons/fi';
 import { IoBedOutline, IoWaterOutline, IoLocationOutline } from "react-icons/io5";
 import MapViewFilters from './MapViewFilters';
+import { defaultCenter, mapOptions } from '../../config/googleMapsConfig';
+import { toast } from 'react-hot-toast';
 
 const containerStyle = {
     width: '100vw',
@@ -15,36 +17,6 @@ const containerStyle = {
     marginLeft: '-50vw',
     marginRight: '-50vw'
 };
-
-// Riyadh center coordinates (default fallback)
-const defaultCenter = {
-    lat: 24.7136,
-    lng: 46.6753
-};
-
-const mapOptions = {
-    disableDefaultUI: window.innerWidth < 768,
-    zoomControl: window.innerWidth >= 768,
-    streetViewControl: window.innerWidth >= 768,
-    mapTypeControl: window.innerWidth >= 768,
-    fullscreenControl: false,
-    gestureHandling: 'greedy',
-    styles: [
-        {
-            featureType: "poi",
-            elementType: "labels",
-            stylers: [{ visibility: "off" }],
-        },
-    ],
-}
-
-const libraries = ['places'];
-
-const createLoaderOptions = (googleMapsApiKey) => ({
-    id: 'google-map-script',
-    googleMapsApiKey,
-    libraries,
-});
 
 // Add geocoding service
 const geocodeAddress = async (address) => {
@@ -130,18 +102,13 @@ export default function MapView({ language }) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({});
-
-    const loaderOptions = useMemo(
-        () => createLoaderOptions(import.meta.env.VITE_GOOGLE_MAPS_API_KEY),
-        []
-    );
-
-    const { isLoaded, loadError } = useJsApiLoader(loaderOptions);
+    const [initialZoom, setInitialZoom] = useState(12);
+    const [showStreetView, setShowStreetView] = useState(false);
 
     const t = content[language];
 
     // Add user location icon
-    const userLocationIcon = useMemo(() => isLoaded ? {
+    const userLocationIcon = useMemo(() => ({
         path: "M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z",
         fillColor: "#4285F4",
         fillOpacity: 1,
@@ -149,10 +116,10 @@ export default function MapView({ language }) {
         strokeColor: "#FFFFFF",
         scale: 1.2,
         anchor: new window.google.maps.Point(12, 12)
-    } : null, [isLoaded]);
+    }), []);
 
     // Add property icon definition
-    const propertyIcon = useMemo(() => isLoaded ? {
+    const propertyIcon = useMemo(() => ({
         path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z",
         fillColor: "#BE092B",
         fillOpacity: 1,
@@ -160,31 +127,53 @@ export default function MapView({ language }) {
         strokeColor: "#FFFFFF",
         scale: 1.3,
         anchor: new window.google.maps.Point(12, 22)
-    } : null, [isLoaded]);
+    }), []);
 
-    // Get user's location
+    // Get user's location immediately when component mounts
     useEffect(() => {
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const userLocation = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    console.log('User location found:', userLocation);
-                    setCenter(userLocation);
-                },
-                (error) => {
-                    console.warn('Error getting location:', error);
-                    setUserLocationError(error.message);
-                    // Keep using default Riyadh coordinates
-                }
-            );
-        } else {
-            console.warn('Geolocation is not supported by this browser');
-            setUserLocationError('Geolocation is not supported by this browser');
-        }
-    }, []);
+        const getUserLocation = () => {
+            if ("geolocation" in navigator) {
+                setLoading(true);
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        console.log('User location found:', userLocation);
+                        setCenter(userLocation);
+                        setInitialZoom(14); // Closer zoom for user location
+                        setShowUserLocation(true);
+                        if (map) {
+                            map.panTo(userLocation);
+                            map.setZoom(14);
+                        }
+                    },
+                    (error) => {
+                        console.warn('Error getting location:', error);
+                        setUserLocationError(error.message);
+                        // Keep default Riyadh coordinates
+                        toast.error(language === 'ar'
+                            ? 'تعذر تحديد موقعك. عرض خريطة الرياض.'
+                            : 'Could not get your location. Showing Riyadh map.');
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                console.warn('Geolocation is not supported by this browser');
+                setUserLocationError('Geolocation is not supported by this browser');
+                toast.error(language === 'ar'
+                    ? 'متصفحك لا يدعم تحديد الموقع'
+                    : 'Your browser does not support geolocation');
+            }
+        };
+
+        getUserLocation();
+    }, [language]);
 
     // Fetch properties
     useEffect(() => {
@@ -220,23 +209,26 @@ export default function MapView({ language }) {
 
                     console.log('Properties with coordinates:', propertiesWithCoords);
                     setProperties(propertiesWithCoords);
+                    setFilteredProperties(propertiesWithCoords);
                 } else {
                     setProperties([]);
+                    setFilteredProperties([]);
                     console.warn('No properties data found in response');
                 }
             } catch (error) {
                 console.error('Failed to fetch properties:', error);
                 setProperties([]);
+                setFilteredProperties([]);
+                toast.error(language === 'ar'
+                    ? 'فشل في تحميل العقارات'
+                    : 'Failed to load properties');
             } finally {
                 setLoading(false);
             }
         };
 
-        // Only fetch properties when the map is loaded
-        if (isLoaded) {
-            fetchProperties();
-        }
-    }, [isLoaded]); // Add isLoaded to dependencies
+        fetchProperties();
+    }, [language]);
 
     // Update map language when language prop changes
     useEffect(() => {
@@ -255,24 +247,13 @@ export default function MapView({ language }) {
     }, [map]);
 
     const onLoad = useCallback((map) => {
-        if (properties.length > 0) {
-            const bounds = new window.google.maps.LatLngBounds();
-            properties.forEach(property => {
-                if (property.latitude && property.longitude) {
-                    bounds.extend({
-                        lat: parseFloat(property.latitude),
-                        lng: parseFloat(property.longitude)
-                    });
-                }
-            });
-            map.fitBounds(bounds);
-        } else {
-            map.setCenter(center);
-            map.setZoom(12);
-        }
-        map.setOptions({ language: language === 'ar' ? 'ar' : 'en' });
         setMap(map);
-    }, [language, properties, center]);
+        map.setOptions({
+            language: language === 'ar' ? 'ar' : 'en',
+            zoom: initialZoom,
+            center: center
+        });
+    }, [language, center, initialZoom]);
 
     const onUnmount = useCallback(() => {
         setMap(null);
@@ -353,17 +334,12 @@ export default function MapView({ language }) {
         setFilters(newFilters);
     }, []);
 
-    if (loadError) {
-        return (
-            <div className="h-[calc(100vh-80px)] flex items-center justify-center">
-                <div className="text-red-500">
-                    {t.loadingError}
-                </div>
-            </div>
-        );
-    }
+    // Update mapOptions
+    const updatedMapOptions = useMemo(() => ({
+        ...mapOptions
+    }), []);
 
-    if (!isLoaded || loading) {
+    if (loading) {
         return (
             <div className="h-[calc(100vh-80px)] flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -399,13 +375,10 @@ export default function MapView({ language }) {
             <GoogleMap
                 mapContainerStyle={containerStyle}
                 center={center}
-                zoom={12}
+                zoom={initialZoom}
                 onLoad={onLoad}
                 onUnmount={onUnmount}
-                options={{
-                    ...mapOptions,
-                    language: language === 'ar' ? 'ar' : 'en'
-                }}
+                options={updatedMapOptions}
             >
                 {/* User location marker */}
                 <MarkerF
@@ -442,6 +415,7 @@ export default function MapView({ language }) {
                     return null;
                 })}
 
+                {/* Selected property info window */}
                 {selectedProperty && (
                     <InfoWindowF
                         position={{

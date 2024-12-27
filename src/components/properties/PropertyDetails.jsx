@@ -4,7 +4,8 @@ import { propertyAPI } from '../../services/api'
 import favoritesAPI from '../../services/favoritesAPI'
 import { FiMaximize, FiMapPin, FiHeart, FiArrowLeft } from 'react-icons/fi'
 import { IoBedOutline, IoWaterOutline } from "react-icons/io5"
-import GoogleMap from '../shared/GoogleMap'
+import { GoogleMap, MarkerF } from '@react-google-maps/api'
+import { defaultCenter, mapOptions } from '../../config/googleMapsConfig'
 import BookingForm from './BookingForm'
 import { Loader } from '@googlemaps/js-api-loader'
 import {
@@ -113,7 +114,7 @@ const content = {
       land: 'أرض'
     },
     categories: {
-      'Amenities': 'المرافق',
+      'Amenities': '��لمرافق',
       'Additional Features': 'مميزات إضافية'
     },
     features_ar: {
@@ -215,7 +216,12 @@ export default function PropertyDetails({ language }) {
   }, [id, t.error])
 
   useEffect(() => {
-    if (property?.address && !coordinates && window.google?.maps) {
+    if (property?.latitude && property?.longitude) {
+      setCoordinates({
+        lat: parseFloat(property.latitude),
+        lng: parseFloat(property.longitude)
+      });
+    } else if (property?.address && !coordinates) {
       const geocoder = new window.google.maps.Geocoder();
       geocoder.geocode({ address: property.address }, (results, status) => {
         if (status === 'OK' && results[0]?.geometry?.location) {
@@ -429,15 +435,22 @@ export default function PropertyDetails({ language }) {
           {coordinates && (
             <div className="mb-8">
               <h2 className="text-xl font-semibold mb-4">{t.propertyLocation}</h2>
-              <div className="relative w-full h-[400px] bg-gray-100">
-                <div className="absolute inset-0">
-                  <GoogleMap
-                    initialLocation={coordinates}
-                    isEditable={false}
-                    language={language}
-                    onLocationSelect={() => { }}
+              <div className="relative w-full h-[400px]">
+                <GoogleMap
+                  mapContainerClassName="w-full h-full min-h-[400px] rounded-lg overflow-hidden border border-gray-300"
+                  center={coordinates}
+                  zoom={15}
+                  options={{
+                    ...mapOptions,
+                    language: language === 'ar' ? 'ar' : 'en'
+                  }}
+                >
+                  <MarkerF
+                    position={coordinates}
+                    animation={window.google.maps.Animation.DROP}
+                    title={language === 'ar' ? 'موقع العقار' : 'Property Location'}
                   />
-                </div>
+                </GoogleMap>
               </div>
             </div>
           )}
