@@ -1,7 +1,8 @@
 import axios from 'axios'
 
 // Base URL configuration
-const API_URL = import.meta.env.VITE_APP_URL || 'https://starkbrokers.com'
+const isDevelopment = import.meta.env.MODE === 'development'
+const API_URL = isDevelopment ? '' : (import.meta.env.VITE_APP_URL || 'https://starkbrokers.com')
 
 const axiosInstance = axios.create({
   baseURL: `${API_URL}/api/v1`, // Add /api/v1 to base URL to match API endpoints
@@ -11,6 +12,7 @@ const axiosInstance = axios.create({
   },
   timeout: 50000,
 })
+
 
 // Request interceptor
 axiosInstance.interceptors.request.use(

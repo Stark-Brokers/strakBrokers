@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { FiPhone, FiLock } from 'react-icons/fi'
 import { formatPhoneNumber, validateSaudiPhone } from '../../utils/phoneUtils'
 import { toast } from 'react-hot-toast'
+import { firebaseAuthService } from '../../services/firebaseAuthService'
 
 export default function Login({ language, userType }) {
   const [step, setStep] = useState('phone') // 'phone' or 'otp'
@@ -11,6 +12,7 @@ export default function Login({ language, userType }) {
   const [otp, setOtp] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [verificationInProgress, setVerificationInProgress] = useState(false)
 
   const { login, verifyOTP } = useAuth()
   const navigate = useNavigate()
@@ -29,7 +31,9 @@ export default function Login({ language, userType }) {
       otpRequired: 'OTP is required',
       otpInvalid: 'Please enter a valid OTP',
       resendOtp: 'Resend OTP',
-      otpSent: 'OTP has been sent to your phone'
+      otpSent: 'OTP has been sent to your phone',
+      verificationFailed: 'Verification failed. Please try again.',
+      invalidOTP: 'Invalid OTP code. Please try again.'
     },
     ar: {
       renterTitle: 'تسجيل دخول المستأجر',
@@ -44,7 +48,9 @@ export default function Login({ language, userType }) {
       otpRequired: 'رمز التحقق مطلوب',
       otpInvalid: 'الرجاء إدخال رمز تحقق صحيح',
       resendOtp: 'إعادة إرسال الرمز',
-      otpSent: 'تم إرسال رمز التحقق إلى هاتفك'
+      otpSent: 'تم إرسال رمز التحقق إلى هاتفك',
+      verificationFailed: 'فشل التحقق. يرجى المحاولة مرة أخرى.',
+      invalidOTP: 'رمز التحقق غير صحيح. حاول مرة اخرى.'
     }
   }
 
@@ -70,7 +76,7 @@ export default function Login({ language, userType }) {
       setError(t.otpRequired)
       return false
     }
-    if (otp.length !== 6) {
+    if (otp.length !== 6 || !/^\d+$/.test(otp)) {
       setError(t.otpInvalid)
       return false
     }
@@ -86,27 +92,39 @@ export default function Login({ language, userType }) {
     setIsLoading(true);
     try {
       const formattedPhone = formatPhoneNumber(phoneNumber);
-      console.log('🔄 Sending login request:', {
+      console.log('🔄 Initiating Firebase phone auth:', {
         phone: formattedPhone,
         type: userType
       });
 
+      // First, request OTP through Firebase
+      const firebaseResponse = await firebaseAuthService.requestOTP(formattedPhone);
+
+      if (!firebaseResponse.success) {
+        throw new Error(firebaseResponse.error || 'Failed to send OTP');
+      }
+
+      // Then, notify the backend
       const response = await login({
         phone: formattedPhone,
-        type: userType
+        type: userType,
+        provider: 'firebase',
+        session_id: firebaseResponse.sessionId
       });
 
       if (response.success) {
         setStep('otp');
-        // Store data for OTP verification
-        localStorage.setItem('auth_phone', formattedPhone);
-        localStorage.setItem('auth_type', userType);
+        setVerificationInProgress(true);
+        // Store verification ID for OTP verification
+        localStorage.setItem('firebase_verification_id', firebaseResponse.sessionId);
+        toast.success(t.otpSent);
       } else {
         throw new Error(response.message || 'Failed to send OTP');
       }
     } catch (err) {
       console.error('❌ Login error:', err);
       setError(err.message || 'Failed to send OTP');
+      setVerificationInProgress(false);
     } finally {
       setIsLoading(false);
     }
@@ -115,43 +133,59 @@ export default function Login({ language, userType }) {
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
 
+    if (!validateOtp()) return;
+
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      setError('');
+      const verificationId = localStorage.getItem('firebase_verification_id');
+      if (!verificationId) {
+        throw new Error('Verification session expired. Please try again.');
+      }
 
-      if (!validateOtp()) return;
+      // First verify with Firebase
+      const firebaseVerification = await firebaseAuthService.verifyOTP(verificationId, otp);
 
+      if (!firebaseVerification.success) {
+        throw new Error(t.invalidOTP);
+      }
+
+      // Then verify with backend
       const formattedPhone = formatPhoneNumber(phoneNumber);
-      const verificationData = {
+      const response = await verifyOTP({
         otp: otp,
         phone: formattedPhone,
-        type: userType
-      };
-
-      const response = await verifyOTP(verificationData);
+        type: userType,
+        firebase_token: firebaseVerification.token
+      });
 
       if (response.success) {
-        // Clean up temporary storage
-        localStorage.removeItem('auth_phone');
-        localStorage.removeItem('auth_type');
+        // Clean up verification data
+        localStorage.removeItem('firebase_verification_id');
+        setVerificationInProgress(false);
 
         // Show success message
         toast.success(language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Logged in successfully');
 
         // Navigate to appropriate dashboard
-        const redirectPath = `/${userType}/profile`;
-        navigate(redirectPath);
+        navigate(`/${userType}/profile`);
       } else {
-        setError(response.message || 'Verification failed');
-        setOtp('');
+        throw new Error(response.message || t.verificationFailed);
       }
     } catch (err) {
       console.error('❌ Verification error:', err);
-      setError(err.message || 'Verification failed');
+      setError(err.message || t.verificationFailed);
       setOtp('');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleResendOtp = async () => {
+    setStep('phone');
+    setOtp('');
+    setError('');
+    localStorage.removeItem('firebase_verification_id');
+    setVerificationInProgress(false);
   };
 
   return (
@@ -165,6 +199,8 @@ export default function Login({ language, userType }) {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <div id="recaptcha-container"></div>
+
           {error && (
             <div className="mb-4 p-2 bg-red-50 text-red-500 text-sm rounded">
               {error}
@@ -181,6 +217,7 @@ export default function Login({ language, userType }) {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <FiPhone className="text-gray-400" />
                   </div>
+
                   <input
                     id="phone"
                     type="tel"
@@ -190,6 +227,7 @@ export default function Login({ language, userType }) {
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="+966 5XXXXXXXX"
                     dir="ltr"
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -212,6 +250,7 @@ export default function Login({ language, userType }) {
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                     placeholder="123456"
                     dir="ltr"
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -232,8 +271,10 @@ export default function Login({ language, userType }) {
           {step === 'otp' && (
             <div className="mt-4 text-center">
               <button
-                onClick={() => setStep('phone')}
-                className="text-sm font-medium text-primary hover:text-primary-hover"
+                onClick={handleResendOtp}
+                disabled={isLoading}
+                className={`text-sm font-medium text-primary hover:text-primary-hover ${isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
               >
                 {t.resendOtp}
               </button>
