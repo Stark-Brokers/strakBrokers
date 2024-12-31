@@ -1,6 +1,6 @@
 import axiosInstance from './axiosInstance'
-import { normalizePhone, validateOTP } from '../utils/phoneUtils'
-import { firebaseAuthService } from './firebaseAuthService'
+import { normalizePhone } from '../utils/phoneUtils'
+// import { firebaseAuthService } from './firebaseAuthService' // Commented for now
 
 const authAPI = {
   // Login (POST /api/v1/auth/login)
@@ -13,33 +13,21 @@ const authAPI = {
         type: credentials.type,
       })
 
-      // First, request OTP through Firebase
-      const firebaseResponse = await firebaseAuthService.requestOTP(formattedPhone);
-      
-      if (!firebaseResponse.success) {
-        throw new Error(firebaseResponse.error || 'Failed to send OTP');
-      }
-
-      // Store the Firebase session ID for later verification
-      localStorage.setItem('firebase_session_id', firebaseResponse.sessionId);
-
-      // We still need to validate the phone with backend first
+      // Using direct API call without Firebase
       const formData = new FormData()
       formData.append('phone', formattedPhone)
       formData.append('type', credentials.type)
-      formData.append('provider', 'firebase') // Add provider flag for backend
-      formData.append('session_id', firebaseResponse.sessionId) // Send Firebase session ID
 
       const response = await axiosInstance.post('auth/login', formData, {
         headers: {
           Accept: 'application/json',
           'Content-Type': 'multipart/form-data',
+          'lang': credentials.language || 'en'
         },
       })
 
       console.log('✅ API Login - Response:', response.data)
 
-      // Check login success
       if (!response.data.success) {
         throw {
           success: false,
@@ -52,6 +40,14 @@ const authAPI = {
       return response.data
     } catch (error) {
       console.error('❌ API Login - Error:', error)
+      if (error.response?.data) {
+        throw {
+          success: false,
+          status: error.response.data.status || error.response.status,
+          message: error.response.data.message || 'Login failed',
+          errors: error.response.data.errors || [],
+        }
+      }
       throw {
         success: false,
         status: error.status || 500,
@@ -64,33 +60,16 @@ const authAPI = {
   // Verify OTP (POST /api/v1/auth/verify-otp)
   verifyOTP: async (verificationData) => {
     try {
-      // Get the stored Firebase session ID
-      const sessionId = localStorage.getItem('firebase_session_id');
-      
-      if (!sessionId) {
-        throw new Error('Firebase session not found');
-      }
-      
-
-      // First verify with Firebase
-      const firebaseVerification = await firebaseAuthService.verifyOTP(
-        sessionId,
-        verificationData.otp
-      );
-
-      if (!firebaseVerification.success) {
-        throw new Error(firebaseVerification.error || 'Firebase verification failed');
-      }
-
       const formData = new FormData();
       formData.append('phone', verificationData.phone);
       formData.append('type', verificationData.type);
-      formData.append('firebase_token', firebaseVerification.token);
+      formData.append('otp', verificationData.otp);
 
       const response = await axiosInstance.post('auth/verify-otp', formData, {
         headers: {
           Accept: 'application/json',
           'Content-Type': 'multipart/form-data',
+          'lang': verificationData.language || 'en'
         },
       });
 
@@ -99,14 +78,12 @@ const authAPI = {
           success: false,
           status: response.data.status || 400,
           message: response.data.message || 'Verification failed',
+          errors: response.data.errors || [],
         };
       }
 
       const token = response.data.data.token;
       const bearerToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-
-      // Clean up Firebase session
-      localStorage.removeItem('firebase_session_id');
 
       // Store the token and user data
       localStorage.setItem('token', bearerToken);
@@ -122,20 +99,94 @@ const authAPI = {
         },
       };
     } catch (error) {
-      // Clean up Firebase session on error
-      localStorage.removeItem('firebase_session_id');
-
+      console.error('❌ Verification Error:', error);
       if (error.response?.data) {
         throw {
           success: false,
           status: error.response.data.status || error.response.status,
           message: error.response.data.message || 'Verification failed',
+          errors: error.response.data.errors || [],
         };
       }
       throw {
         success: false,
         status: error.status || 500,
         message: error.message || 'Verification failed',
+        errors: [],
+      };
+    }
+  },
+
+  // Register (POST /api/v1/auth/register)
+  register: async (userData) => {
+    try {
+      const formData = new FormData();
+      
+      // Required fields
+      formData.append('full_name', userData.full_name);
+      formData.append('phone', userData.phone);
+      formData.append('email', userData.email);
+      formData.append('type', userData.type);
+      formData.append('address', userData.address);
+
+      // Optional fields for owner type
+      if (userData.type === 'owner') {
+        formData.append('business_name', userData.business_name);
+        formData.append('business_license', userData.business_license);
+      }
+
+      const response = await axiosInstance.post('auth/register', formData, {
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'multipart/form-data',
+          'lang': userData.language || 'en'
+        },
+      });
+
+      console.log('✅ Registration Response:', response.data);
+
+      
+      if (!response.data.success) {
+        throw {
+          success: false,
+          status: response.data.status,
+          message: response.data.message,
+          errors: response.data.error || [],
+          language: userData.language
+        };
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('❌ Registration Error:', error);
+      
+      // Handle the new error format
+      if (error.response?.data?.error) {
+        throw {
+          success: false,
+          status: error.response.data.status || error.response.status,
+          message: error.response.data.message || 'Validation failed',
+          errors: error.response.data.error || [],
+          language: userData.language
+        };
+      }
+      
+      if (error.response?.data) {
+        throw {
+          success: false,
+          status: error.response.data.status || error.response.status,
+          message: error.response.data.message || 'Registration failed',
+          errors: error.response.data.errors || [],
+          language: userData.language
+        };
+      }
+      
+      throw {
+        success: false,
+        status: error.status || 500,
+        message: error.message || 'Registration failed',
+        errors: [],
+        language: userData.language
       };
     }
   },
@@ -182,49 +233,6 @@ const authAPI = {
         success: false,
         status: error.response?.status || 500,
         message: error.response?.data?.message || 'Failed to fetch profile',
-      };
-    }
-  },
-
-  // Register (POST /api/v1/auth/register)
-  register: async (userData) => {
-    try {
-      const formData = new FormData();
-      Object.keys(userData).forEach((key) => {
-        formData.append(key, userData[key]);
-      });
-
-      const response = await axiosInstance.post('auth/register', formData, {
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (!response.data.success) {
-        throw {
-          success: false,
-          status: response.data.status,
-          message: response.data.message,
-          errors: response.data.error || [],
-        };
-      }
-
-      return response.data;
-    } catch (error) {
-      if (error.response?.data) {
-        throw {
-          success: false,
-          status: error.response.data.status || error.response.status,
-          message: error.response.data.message || 'Registration failed',
-          errors: error.response.data.error || [],
-        };
-      }
-      throw {
-        success: false,
-        status: error.status || 500,
-        message: error.message || 'Registration failed',
-        errors: [],
       };
     }
   },

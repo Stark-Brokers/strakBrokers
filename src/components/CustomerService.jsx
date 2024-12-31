@@ -14,6 +14,8 @@ export default function CustomerService({ language }) {
     const [loading, setLoading] = useState(false)
     const [errors, setErrors] = useState({})
     const [settings, setSettings] = useState(null)
+    const [faqs, setFaqs] = useState([])
+    const [loadingFaqs, setLoadingFaqs] = useState(false)
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -27,6 +29,23 @@ export default function CustomerService({ language }) {
 
         fetchSettings();
     }, []);
+
+    useEffect(() => {
+        const fetchFAQs = async () => {
+            setLoadingFaqs(true);
+            try {
+                const response = await settingsAPI.getFAQs(language);
+                setFaqs(response.data || []);
+            } catch (error) {
+                console.error('Failed to fetch FAQs:', error);
+                toast.error(language === 'ar' ? 'فشل في تحميل الأسئلة الشائعة' : 'Failed to load FAQs');
+            } finally {
+                setLoadingFaqs(false);
+            }
+        };
+
+        fetchFAQs();
+    }, [language]); // Refetch when language changes
 
     const content = {
         en: {
@@ -52,16 +71,8 @@ export default function CustomerService({ language }) {
             },
             success: 'Message sent successfully!',
             error: 'Failed to send message. Please try again.',
-            faqItems: [
-                {
-                    q: 'How do I schedule a property viewing?',
-                    a: 'You can schedule a viewing by clicking the "Book a Tour" button on any property listing.'
-                },
-                {
-                    q: 'What documents do I need for renting?',
-                    a: 'Typically, you\'ll need valid ID, proof of income, and employment verification.'
-                }
-            ]
+            loadingFaqs: 'Loading FAQs...',
+            noFaqs: 'No FAQs available at the moment.'
         },
         ar: {
             title: 'خدمة العملاء',
@@ -69,7 +80,7 @@ export default function CustomerService({ language }) {
             contact: 'اتصل بنا',
             faq: 'الأسئلة الشائعة',
             support: 'ساعات الدعم',
-            email: settingsAPI.getSettingValue(settings, 'support_email') || 'جاري التحمي��...',
+            email: settingsAPI.getSettingValue(settings, 'support_email') || 'جاري التحميل...',
             phone: settingsAPI.getSettingValue(settings, 'support_phone') || 'جاري التحميل...',
             hours: 'دعم على مدار الساعة',
             form: {
@@ -86,16 +97,8 @@ export default function CustomerService({ language }) {
             },
             success: 'تم إرسال الرسالة بنجاح!',
             error: 'فشل في إرسال الرسالة. يرجى المحاولة مرة أخرى.',
-            faqItems: [
-                {
-                    q: 'كيف يمكنني جدولة معاينة العقار؟',
-                    a: 'يمكنك جدولة معاينة بالنقر على زر "حجز جولة" في أي قائمة عقارية.'
-                },
-                {
-                    q: 'ما المستندات المطلوبة للإيجار؟',
-                    a: 'عادةً، ستحتاج إلى هوية سارية، وإثبات دخل، وتحقق من التوظيف.'
-                }
-            ]
+            loadingFaqs: 'جاري تحميل الأسئلة الشائعة...',
+            noFaqs: 'لا توجد أسئلة شائعة متاحة حاليًا.'
         }
     }
 
@@ -308,17 +311,32 @@ export default function CustomerService({ language }) {
                             </button>
                         </form>
                     ) : (
-                        <div className="space-y-6">
-                            {t.faqItems.map((item, index) => (
-                                <div key={index}>
-                                    <h3 className="font-semibold mb-2">{item.q}</h3>
-                                    <p className="text-gray-600">{item.a}</p>
+                        <div className={`space-y-6 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+                            {loadingFaqs ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <FiLoader className="w-6 h-6 animate-spin text-primary" />
+                                    <span className="mx-2">{t.loadingFaqs}</span>
                                 </div>
-                            ))}
+                            ) : faqs.length > 0 ? (
+                                faqs.map((faq, index) => (
+                                    <div
+                                        key={faq.id || index}
+                                        className={`border-b border-gray-100 last:border-0 pb-4 last:pb-0 ${language === 'ar' ? 'font-arabic' : ''
+                                            }`}
+                                    >
+                                        <h3 className="font-semibold mb-2">{faq.question}</h3>
+                                        <p className="text-gray-600">{faq.answer}</p>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-8 text-gray-500">
+                                    {t.noFaqs}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
             </div>
         </div>
     )
-} 
+}

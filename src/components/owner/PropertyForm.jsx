@@ -46,7 +46,9 @@ export default function PropertyForm({ language }) {
       cancel: 'Cancel',
       categories: {
         'Amenities': 'Amenities',
-        'Additional Features': 'Additional Features'
+        'Additional Features': 'Additional Features',
+        'amenities': 'Amenities',
+        'additional features': 'Additional Features'
       },
       features: {
         'feature 1': 'Parking',
@@ -133,7 +135,9 @@ export default function PropertyForm({ language }) {
       cancel: 'إلغاء',
       categories: {
         'Amenities': 'المرافق',
-        'Additional Features': 'مميزات إضافية'
+        'Additional Features': 'مميزات إضافية',
+        'amenities': 'المرافق',
+        'additional features': 'مميزات إضافية'
       },
       features: {
         'feature 1': 'موقف سيارات',
@@ -154,7 +158,7 @@ export default function PropertyForm({ language }) {
         city: 'المدينة',
         district: 'الحي',
         street: 'اسم الشارع',
-        building_number: 'رقم ا��مبنى',
+        building_number: 'رقم المبنى',
         selectLocation: 'حدد الموقع (انقر على الخريطة أو اسحب العلامة)',
         locationError: 'الرجاء تحديد موقع على الخريطة'
       },
@@ -478,7 +482,7 @@ export default function PropertyForm({ language }) {
       setSubmitStatus({
         success: false,
         message: language === 'ar'
-          ? (id ? 'حدث خطأ أثناء تحديث العقار' : 'حدث خطأ أثناء حفظ ال��قار')
+          ? (id ? 'حدث خطأ أثناء تحديث العقار' : 'حدث خطأ أثناء حفظ العقار')
           : (id ? 'Failed to update property' : 'Failed to save property')
       })
     } finally {
@@ -698,7 +702,7 @@ export default function PropertyForm({ language }) {
         {categories.map(category => (
           <section key={category.id} className="space-y-4">
             <h2 className={`text-xl font-semibold ${language === 'ar' ? 'font-arabic' : ''}`}>
-              {t.categories[category.name]}
+              {t.categories[category.name.toLowerCase()] || category.name}
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {category.features.map(feature => {
@@ -718,13 +722,15 @@ export default function PropertyForm({ language }) {
                       }}
                       className="rounded border-gray-300 text-primary focus:ring-primary"
                     />
-                    <span className="text-sm text-gray-700">{featureName}</span>
+                    <span className="text-sm text-gray-700">{featureName || feature.name}</span>
                   </label>
                 );
               })}
             </div>
           </section>
         ))}
+
+
 
         {/* Images */}
         <section>

@@ -3,30 +3,32 @@ import { useNavigate } from 'react-router-dom'
 import { FiEdit2, FiTrash2, FiEye, FiChevronLeft, FiChevronRight } from 'react-icons/fi'
 import { propertyAPI } from '../../services/api'
 
-const PropertyCard = ({ property, onDelete, onStatusUpdate, translations }) => {
+const PropertyCard = ({ property, onDelete, onStatusUpdate, translations, language }) => {
   const navigate = useNavigate();
-  const statusColor = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    accepted: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800'
-  };
 
   if (!property) return null;
 
-  const handleEdit = () => {
-    navigate(`/owner/properties/edit/${property.id}`);
-  };
-
-  // Group features by category
-  const groupedFeatures = {
-    amenities: property.features?.filter(f => f.id <= 19) || [],
-    additionalFeatures: property.features?.filter(f => f.id >= 20) || []
+  const getStatusColor = (status) => {
+    const normalizedStatus = status?.toLowerCase();
+    switch (normalizedStatus) {
+      case 'pending':
+      case 'قيد الانتظار':
+        return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+      case 'accepted':
+      case 'مقبول':
+        return 'bg-green-100 text-green-800 border border-green-200';
+      case 'rejected':
+      case 'مرفوض':
+        return 'bg-red-100 text-red-800 border border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       <div className="flex items-center p-4 border-b">
-        <div className="relative w-24 h-24">
+        <div className="relative w-24 h-24 flex-shrink-0">
           <img
             src={property.images?.[0]?.url || 'https://placehold.co/100x100?text=No+Image'}
             alt={property.title}
@@ -38,17 +40,21 @@ const PropertyCard = ({ property, onDelete, onStatusUpdate, translations }) => {
             </span>
           )}
         </div>
-        <div className="flex-1 ml-4">
-          <h3 className="font-semibold text-lg">{property.title}</h3>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span className={`px-2 py-0.5 rounded-full text-xs ${statusColor[property.status] || 'bg-gray-100 text-gray-800'}`}>
-              {property.status}
+        <div className={`flex-1 ${language === 'ar' ? 'mr-6' : 'ml-6'}`}>
+          <div className="flex justify-between items-start gap-4">
+            <h3 className={`font-semibold text-lg ${language === 'ar' ? 'font-arabic' : ''}`}>
+              {property.title}
+            </h3>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getStatusColor(property.status)}`}>
+              {property.translatedStatus}
             </span>
-            <span>•</span>
-            <span>{property.type}</span>
+          </div>
+          <div className={`mt-3 text-sm text-gray-600 ${language === 'ar' ? 'font-arabic' : ''}`}>
+            <span>{property.translatedType}</span>
           </div>
         </div>
       </div>
+
 
       <div className="p-4 space-y-4">
         {/* Specifications */}
@@ -79,11 +85,11 @@ const PropertyCard = ({ property, onDelete, onStatusUpdate, translations }) => {
         {property.features?.length > 0 && (
           <div className="space-y-4">
             {/* Amenities */}
-            {groupedFeatures.amenities.length > 0 && (
+            {property.features?.filter(f => f.id <= 19).length > 0 && (
               <div>
                 <h4 className="font-medium mb-2">{translations.categories.amenities}</h4>
                 <div className="flex flex-wrap gap-2">
-                  {groupedFeatures.amenities.map(feature => (
+                  {property.features?.filter(f => f.id <= 19).map(feature => (
                     <div
                       key={feature.id}
                       className="px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-full"
@@ -96,11 +102,11 @@ const PropertyCard = ({ property, onDelete, onStatusUpdate, translations }) => {
             )}
 
             {/* Additional Features */}
-            {groupedFeatures.additionalFeatures.length > 0 && (
+            {property.features?.filter(f => f.id >= 20).length > 0 && (
               <div>
                 <h4 className="font-medium mb-2">{translations.categories.additionalFeatures}</h4>
                 <div className="flex flex-wrap gap-2">
-                  {groupedFeatures.additionalFeatures.map(feature => (
+                  {property.features?.filter(f => f.id >= 20).map(feature => (
                     <div
                       key={feature.id}
                       className="px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-full"
@@ -124,7 +130,7 @@ const PropertyCard = ({ property, onDelete, onStatusUpdate, translations }) => {
             <FiEye />
           </button>
           <button
-            onClick={handleEdit}
+            onClick={() => navigate(`/owner/properties/edit/${property.id}`)}
             className="p-2 text-blue-600 hover:text-blue-800"
             title={translations.edit}
           >
@@ -147,6 +153,7 @@ export default function MyProperties({ language }) {
   const navigate = useNavigate()
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(true)
+  const [translatedProperties, setTranslatedProperties] = useState([])
   const [pagination, setPagination] = useState({
     currentPage: 1,
     lastPage: 1,
@@ -281,6 +288,51 @@ export default function MyProperties({ language }) {
     fetchProperties()
   }, [pagination.currentPage])
 
+  useEffect(() => {
+    // Update translations whenever language or properties change
+    const updatedProperties = properties.map(property => {
+      console.log('Property status:', property.status); // Debug log
+
+      // Get the correct status translation
+      let translatedStatus;
+      if (property.status?.toLowerCase() === 'pending') {
+        translatedStatus = language === 'ar' ? 'قيد الانتظار' : 'Pending';
+      } else if (property.status?.toLowerCase() === 'accepted') {
+        translatedStatus = language === 'ar' ? 'مقبول' : 'Accepted';
+      } else if (property.status?.toLowerCase() === 'rejected') {
+        translatedStatus = language === 'ar' ? 'مرفوض' : 'Rejected';
+      } else {
+        translatedStatus = property.status;
+      }
+
+      console.log('Translated status:', translatedStatus); // Debug log
+
+      // Get the correct type translation
+      const translatedType = language === 'ar'
+        ? {
+          'apartment': 'شقة',
+          'villa': 'فيلا',
+          'office': 'مكتب',
+          'land': 'أرض',
+          'building': 'مبنى'
+        }[property.type?.toLowerCase()] || property.type
+        : {
+          'apartment': 'Apartment',
+          'villa': 'Villa',
+          'office': 'Office',
+          'land': 'Land',
+          'building': 'Building'
+        }[property.type?.toLowerCase()] || property.type;
+
+      return {
+        ...property,
+        translatedStatus,
+        translatedType
+      };
+    });
+    setTranslatedProperties(updatedProperties);
+  }, [language, properties]);
+
   const fetchProperties = async () => {
     try {
       setLoading(true)
@@ -288,7 +340,12 @@ export default function MyProperties({ language }) {
       console.log('Properties response:', response)
 
       if (response?.data) {
-        setProperties(response.data.items)
+        // Normalize the status values when setting properties
+        const normalizedProperties = response.data.items.map(item => ({
+          ...item,
+          status: item.status?.toLowerCase() || 'pending'
+        }));
+        setProperties(normalizedProperties);
         setPagination({
           currentPage: response.data.currentPage,
           lastPage: response.data.lastPage,
@@ -373,14 +430,25 @@ export default function MyProperties({ language }) {
         </div>
       ) : (
         <>
+          <div className="mb-6 bg-blue-100 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <p className={`${language === 'ar' ? 'font-arabic' : ''}`}>
+              {language === 'ar'
+                ? 'يرجى تحديث الصفحة لرؤية تحديثات الحالة'
+                : 'Please refresh the page to see status updates'}
+            </p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {properties.map(property => (
+            {translatedProperties.map(property => (
               <PropertyCard
                 key={property.id}
                 property={property}
                 onDelete={handleDelete}
                 onStatusUpdate={handleBookingStatusUpdate}
                 translations={t}
+                language={language}
               />
             ))}
           </div>

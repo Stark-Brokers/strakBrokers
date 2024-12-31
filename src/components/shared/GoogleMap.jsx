@@ -15,7 +15,10 @@ export default function GoogleMapComponent({
         const lng = event.latLng.lng();
 
         const geocoder = new window.google.maps.Geocoder();
-        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+        geocoder.geocode({
+            location: { lat, lng },
+            language: language === 'ar' ? 'ar' : 'en'  // Set geocoder language
+        }, (results, status) => {
             onLocationSelect({
                 latitude: lat,
                 longitude: lng,
@@ -33,7 +36,10 @@ export default function GoogleMapComponent({
         const lng = event.latLng.lng();
 
         const geocoder = new window.google.maps.Geocoder();
-        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+        geocoder.geocode({
+            location: { lat, lng },
+            language: language === 'ar' ? 'ar' : 'en'  // Set geocoder language
+        }, (results, status) => {
             onLocationSelect({
                 latitude: lat,
                 longitude: lng,

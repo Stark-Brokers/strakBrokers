@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { FiPhone, FiLock } from 'react-icons/fi'
 import { formatPhoneNumber, validateSaudiPhone } from '../../utils/phoneUtils'
 import { toast } from 'react-hot-toast'
-import { firebaseAuthService } from '../../services/firebaseAuthService'
+// import { firebaseAuthService } from '../../services/firebaseAuthService' // Commented for now
 
 export default function Login({ language, userType }) {
   const [step, setStep] = useState('phone') // 'phone' or 'otp'
@@ -12,7 +12,6 @@ export default function Login({ language, userType }) {
   const [otp, setOtp] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [verificationInProgress, setVerificationInProgress] = useState(false)
 
   const { login, verifyOTP } = useAuth()
   const navigate = useNavigate()
@@ -92,31 +91,19 @@ export default function Login({ language, userType }) {
     setIsLoading(true);
     try {
       const formattedPhone = formatPhoneNumber(phoneNumber);
-      console.log('🔄 Initiating Firebase phone auth:', {
+      console.log('🔄 Sending login request:', {
         phone: formattedPhone,
         type: userType
       });
 
-      // First, request OTP through Firebase
-      const firebaseResponse = await firebaseAuthService.requestOTP(formattedPhone);
-
-      if (!firebaseResponse.success) {
-        throw new Error(firebaseResponse.error || 'Failed to send OTP');
-      }
-
-      // Then, notify the backend
       const response = await login({
         phone: formattedPhone,
         type: userType,
-        provider: 'firebase',
-        session_id: firebaseResponse.sessionId
+        language
       });
 
       if (response.success) {
         setStep('otp');
-        setVerificationInProgress(true);
-        // Store verification ID for OTP verification
-        localStorage.setItem('firebase_verification_id', firebaseResponse.sessionId);
         toast.success(t.otpSent);
       } else {
         throw new Error(response.message || 'Failed to send OTP');
@@ -124,7 +111,6 @@ export default function Login({ language, userType }) {
     } catch (err) {
       console.error('❌ Login error:', err);
       setError(err.message || 'Failed to send OTP');
-      setVerificationInProgress(false);
     } finally {
       setIsLoading(false);
     }
@@ -137,32 +123,15 @@ export default function Login({ language, userType }) {
 
     setIsLoading(true);
     try {
-      const verificationId = localStorage.getItem('firebase_verification_id');
-      if (!verificationId) {
-        throw new Error('Verification session expired. Please try again.');
-      }
-
-      // First verify with Firebase
-      const firebaseVerification = await firebaseAuthService.verifyOTP(verificationId, otp);
-
-      if (!firebaseVerification.success) {
-        throw new Error(t.invalidOTP);
-      }
-
-      // Then verify with backend
       const formattedPhone = formatPhoneNumber(phoneNumber);
       const response = await verifyOTP({
         otp: otp,
         phone: formattedPhone,
         type: userType,
-        firebase_token: firebaseVerification.token
+        language
       });
 
       if (response.success) {
-        // Clean up verification data
-        localStorage.removeItem('firebase_verification_id');
-        setVerificationInProgress(false);
-
         // Show success message
         toast.success(language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Logged in successfully');
 
@@ -180,12 +149,11 @@ export default function Login({ language, userType }) {
     }
   };
 
+
   const handleResendOtp = async () => {
     setStep('phone');
     setOtp('');
     setError('');
-    localStorage.removeItem('firebase_verification_id');
-    setVerificationInProgress(false);
   };
 
   return (

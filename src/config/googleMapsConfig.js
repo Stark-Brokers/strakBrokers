@@ -13,6 +13,7 @@ export const mapOptions = {
     streetViewControl: false,
     styles: [
         {
+            
             featureType: "poi",
             elementType: "labels",
             stylers: [{ visibility: "off" }],
@@ -23,5 +24,7 @@ export const mapOptions = {
 export const loadScriptProps = {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries,
-    id: 'google-map-script'
+    id: 'google-map-script',
+    language: 'ar',
+    region: 'SA'
 }; 

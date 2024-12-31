@@ -134,6 +134,7 @@ export default function Register({ language, userType }) {
       setError(t.validationErrors.phoneInvalid);
       return false;
     }
+
     if (!formData.address?.trim()) {
       setError(t.validationErrors.addressRequired);
       return false;
@@ -177,6 +178,7 @@ export default function Register({ language, userType }) {
         ...formData,
         phone: formattedPhone,
         type: userType,
+        language,
         ...(userType === 'owner' ? {
           business_name: formData.business_name,
           business_license: formData.business_license
@@ -192,12 +194,50 @@ export default function Register({ language, userType }) {
         // Store data for OTP verification
         localStorage.setItem('auth_phone', formattedPhone);
         localStorage.setItem('auth_type', userType);
+        toast.success(t.otpSent);
       } else {
         throw new Error(response.message || 'Registration failed');
       }
     } catch (error) {
       console.error('❌ Registration Error:', error);
-      setError(error.message || 'Registration failed');
+
+      // Handle validation errors from backend
+      if (error.errors && error.errors.length > 0) {
+        const translations = {
+          // Field translations
+          fields: {
+            phone: language === 'ar' ? 'رقم الهاتف' : 'Phone',
+            email: language === 'ar' ? 'البريد الإلكتروني' : 'Email',
+            full_name: language === 'ar' ? 'الاسم الكامل' : 'Full Name',
+            address: language === 'ar' ? 'العنوان' : 'Address',
+            business_name: language === 'ar' ? 'اسم الشركة' : 'Business Name',
+            business_license: language === 'ar' ? 'رخصة العمل' : 'Business License'
+          },
+          // Error message translations
+          messages: {
+            'The Phone Number has already been taken.': 'رقم الهاتف مسجل مسبقاً',
+            'The Email has already been taken.': 'البريد الإلكتروني مسجل مسبقاً',
+            'The phone field is required.': 'رقم الهاتف مطلوب',
+            'The email field is required.': 'البريد الإلكتروني مطلوب',
+            'The full name field is required.': 'الاسم الكامل مطلوب',
+            'The address field is required.': 'العنوان مطلوب',
+            'The business name field is required.': 'اسم الشركة مطلوب',
+            'The business license field is required.': 'رخصة العمل مطلوبة'
+          }
+        };
+
+        const errorMessages = error.errors
+          .map(err => {
+            const fieldName = translations.fields[err.field] || err.field;
+            const message = language === 'ar' ? translations.messages[err.messages] || err.messages : err.messages;
+            return `${fieldName}: ${message}`;
+          })
+          .join('\n');
+
+        setError(errorMessages);
+      } else {
+        setError(error.message || (language === 'ar' ? 'فشل في التسجيل' : 'Registration failed'));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -217,10 +257,11 @@ export default function Register({ language, userType }) {
       const verificationData = {
         otp: otp,
         phone: storedPhone,
-        type: storedType
+        type: storedType,
+        language
       };
 
-      console.log('�� Sending OTP Verification:', verificationData);
+      console.log('🔄 Sending OTP Verification:', verificationData);
 
       const response = await authAPI.verifyOTP(verificationData);
 
@@ -241,13 +282,18 @@ export default function Register({ language, userType }) {
         toast.success(language === 'ar' ? 'تم التسجيل بنجاح' : 'Registration successful');
 
         // Navigate to profile
-        window.location.href = `/${userType}/profile`;
+        navigate(`/${userType}/profile`);
       } else {
-        throw new Error(response.message || 'Verification failed');
+        throw new Error(response.message || t.validationErrors.verificationFailed);
       }
     } catch (error) {
       console.error('❌ OTP Verification Error:', error);
-      setError(error.message || 'Verification failed');
+      if (error.errors && Object.keys(error.errors).length > 0) {
+        const errorMessages = Object.values(error.errors).flat().join('\n');
+        setError(errorMessages);
+      } else {
+        setError(error.message || t.validationErrors.verificationFailed);
+      }
     } finally {
       setIsLoading(false);
     }
